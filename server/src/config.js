@@ -10,6 +10,8 @@ export const config = {
   clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
   adminCode: process.env.ADMIN_CODE || "123456",
   answerSeconds: numberFromEnv("ANSWER_SECONDS", 20),
+  guessRegistrationSeconds: numberFromEnv("GUESS_REGISTRATION_SECONDS", 12),
   guessSeconds: numberFromEnv("GUESS_SECONDS", 10),
   finalGuessSeconds: numberFromEnv("FINAL_GUESS_SECONDS", 20),
+  finalClueSeconds: numberFromEnv("FINAL_CLUE_SECONDS", 30),
 };

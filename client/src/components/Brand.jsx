@@ -3,7 +3,7 @@ export function Brand() {
     <div className="brand">
       <div className="brand-mark">$</div>
       <div>
-        <span>Bí ẩn Chủ nghĩa Tư bản</span>
+        <span>Capitalism Mystery</span>
         <small>Đoán nhà kinh tế học</small>
       </div>
     </div>

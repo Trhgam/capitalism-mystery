@@ -44,12 +44,32 @@ export function registerHandlers(io, socket, game, config) {
 
   socket.on("game:start", (_, ack) => reply(ack, () => { requireAdmin(); game.start(); return {}; }));
   socket.on("question:select", (_, ack) => reply(ack, () => { requireTeam(); game.selectQuestion(teamId); return {}; }));
-  socket.on("question:answer", (payload, ack) => reply(ack, () => { requireTeam(); const data = answerSchema.parse(payload); return { result: game.answer(teamId, data.optionIndex) }; }));
+  socket.on("question:answer", (payload, ack) => reply(ack, () => {
+    requireTeam();
+    const data = answerSchema.parse(payload);
+    if (game.state.phase === "FINAL_MYSTERY") {
+      return { result: game.answerFinalMystery(teamId, data.optionIndex) };
+    }
+    return { result: game.answer(teamId, data.optionIndex) };
+  }));
+  socket.on("final:answer", (payload, ack) => reply(ack, () => {
+    requireTeam();
+    const data = answerSchema.parse(payload);
+    return { result: game.answerFinalMystery(teamId, data.optionIndex) };
+  }));
+  socket.on("final:register", (_, ack) => reply(ack, () => {
+    requireTeam();
+    game.registerFinalMystery(teamId);
+    return {};
+  }));
   socket.on("guess:request", (_, ack) => reply(ack, () => { requireTeam(); game.requestGuess(teamId); return {}; }));
+  socket.on("guess:save", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
+  socket.on("guess:skip", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
   socket.on("guess:submit", (payload, ack) => reply(ack, () => { requireTeam(); const data = guessSchema.parse(payload); return game.submitGuess(teamId, data.answer); }));
-  socket.on("turn:select-next", (payload, ack) => reply(ack, () => { const data = nextSchema.parse(payload); if (!isAdmin) requireTeam(); game.selectNextTeam(teamId, data.teamId, isAdmin); return {}; }));
+  socket.on("turn:select-next", (payload, ack) => reply(ack, () => { requireTeam(); const data = nextSchema.parse(payload); game.selectNextTeam(teamId, data.teamId); return {}; }));
   socket.on("game:pause", (_, ack) => reply(ack, () => { requireAdmin(); game.pause(); return {}; }));
   socket.on("game:resume", (_, ack) => reply(ack, () => { requireAdmin(); game.resume(); return {}; }));
   socket.on("game:reset", (_, ack) => reply(ack, () => { requireAdmin(); game.reset(); return {}; }));
+  socket.on("game:start-final-mystery", (_, ack) => reply(ack, () => { requireAdmin(); game.startFinalMystery(); return {}; }));
   socket.on("disconnect", () => { if (teamId) game.disconnectTeam(teamId); });
 }

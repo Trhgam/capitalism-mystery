@@ -1,4 +1,4 @@
-export function TeamSidebar({ teams, currentTeamId, selfId }) {
+export function TeamSidebar({ teams, currentTeamId, selfId, guessQueue = [] }) {
   return (
     <aside className="team-sidebar-panel">
       <div className="team-sidebar-header">
@@ -10,6 +10,7 @@ export function TeamSidebar({ teams, currentTeamId, selfId }) {
         {teams.map((team) => {
           const isActive = team.id === currentTeamId;
           const isSelf = team.id === selfId;
+          const queueEntry = guessQueue.find((item) => item.teamId === team.id);
           const initial = team.name.trim().charAt(0).toUpperCase();
           const displayScore = team.score >= 100 ? Math.floor(team.score / 100) : (team.score || team.guessTokens || 0);
 
@@ -33,6 +34,11 @@ export function TeamSidebar({ teams, currentTeamId, selfId }) {
                 )}
                 {!isActive && isSelf && (
                   <span className="team-item-subtext">BẠN</span>
+                )}
+                {queueEntry && (
+                  <span className={`team-queue-badge ${queueEntry.status}`}>
+                    {queueEntry.status === "waiting" ? "ĐÃ XẾP HÀNG" : queueEntry.status.toUpperCase()}
+                  </span>
                 )}
               </div>
 

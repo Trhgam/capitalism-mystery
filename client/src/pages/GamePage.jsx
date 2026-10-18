@@ -11,7 +11,8 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
     liveTeam &&
     liveTeam.guessTokens > 0 &&
     !queueItem &&
-    ["ANSWERING", "ANSWER_RESULT"].includes(state.phase);
+    (state.phase === "ANSWERING" ||
+      (state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect));
 
   if (state.phase === "FINISHED") {
     return <Winner state={state} actions={actions} adminMode={adminMode} />;
@@ -41,14 +42,16 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
           teams={state.teams}
           currentTeamId={state.currentTeamId}
           selfId={liveTeam?.id}
+          guessQueue={state.guessQueue}
         />
 
         <PuzzleBoard
           pieces={state.puzzle}
           finished={false}
-          onGuessClick={actions.requestGuess}
-          canGuess={canRequestGuess}
-          isQueued={Boolean(queueItem)}
+          veiled={(!state.winner && state.phase === "FINAL_MYSTERY") || (!state.winner && state.phase === "FINISHED")}
+          state={state}
+          self={liveTeam}
+          actions={actions}
         />
 
         <GamePanel
@@ -69,27 +72,43 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
 }
 
 function Winner({ state, actions, adminMode }) {
+  const hasWinner = Boolean(state.winner);
   return (
     <main className="winner-page">
       <div className="winner-art">
-        <PuzzleBoard pieces={state.puzzle} finished />
+        <PuzzleBoard
+          pieces={state.puzzle}
+          finished={hasWinner}
+          veiled={!hasWinner}
+        />
       </div>
       <div className="winner-copy">
-        <div className="eyebrow">Mystery solved</div>
-        <h1>{state.winner ? "Adam Smith" : "Chưa có đội chiến thắng"}</h1>
-        {state.winner ? (
+        <div className="eyebrow">{hasWinner ? "Mystery solved" : "Mystery unsolved"}</div>
+        <h1>{hasWinner ? "Adam Smith" : "Chưa có đội chiến thắng"}</h1>
+        {hasWinner ? (
           <>
             <p>Đội chiến thắng</p>
             <strong>{state.winner.teamName}</strong>
             <blockquote>“The great affair, we always find, is to get money.”</blockquote>
           </>
         ) : (
-          <p>12 mảnh đã được xử lý nhưng không có dự đoán chính xác.</p>
+          <p>12 mảnh đã được xử lý nhưng không có dự đoán chính xác. Chân dung được giữ kín!</p>
         )}
         {adminMode && (
-          <button className="primary" onClick={actions.reset}>
-            Chuẩn bị trận mới
-          </button>
+          <div style={{ display: "flex", gap: "12px", marginTop: "18px", flexWrap: "wrap" }}>
+            <button className="primary" onClick={actions.reset}>
+              Chuẩn bị trận mới
+            </button>
+            {!hasWinner && (
+              <button
+                className="primary"
+                style={{ background: "linear-gradient(135deg, #d4af37, #997819)", color: "#161822" }}
+                onClick={actions.startFinalMystery}
+              >
+                Mở Vòng Gợi Ý (Final Mystery) →
+              </button>
+            )}
+          </div>
         )}
       </div>
     </main>

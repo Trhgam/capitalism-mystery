@@ -83,11 +83,13 @@ export function useGame({ adminMode }) {
     selectQuestion: () => run("question:select"),
     answer: (optionIndex) => run("question:answer", { optionIndex }),
     requestGuess: () => run("guess:request"),
+    saveGuess: () => run("guess:save"),
     submitGuess: (answer) => run("guess:submit", { answer }),
     selectNext: (teamId) => run("turn:select-next", { teamId }),
     pause: () => run("game:pause"),
     resume: () => run("game:resume"),
     reset: () => run("game:reset"),
+    startFinalMystery: () => run("game:start-final-mystery"),
   }), [run]);
 
   return { state, team, connected, error, setError, adminAuthenticated, actions };
