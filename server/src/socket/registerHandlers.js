@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-const joinSchema = z.object({ name: z.string() });
+const allowedTeamNumbers = new Set([1, 2, 3, 5, 6, 7, 8]);
+const joinSchema = z.object({
+  teamNumber: z.number().int().refine((value) => allowedTeamNumbers.has(value)),
+});
 const tokenSchema = z.object({ token: z.string().min(10) });
 const answerSchema = z.object({ optionIndex: z.number().int().min(0).max(3) });
 const guessSchema = z.object({ answer: z.string() });
@@ -21,7 +24,7 @@ export function registerHandlers(io, socket, game, config) {
 
   socket.on("team:join", (payload, ack) => reply(ack, () => {
     const data = joinSchema.parse(payload);
-    const result = game.joinTeam(data.name);
+    const result = game.joinTeam(`Team ${data.teamNumber}`);
     teamId = result.team.id;
     socket.join(`team:${teamId}`);
     return result;
@@ -71,5 +74,6 @@ export function registerHandlers(io, socket, game, config) {
   socket.on("game:resume", (_, ack) => reply(ack, () => { requireAdmin(); game.resume(); return {}; }));
   socket.on("game:reset", (_, ack) => reply(ack, () => { requireAdmin(); game.reset(); return {}; }));
   socket.on("game:start-final-mystery", (_, ack) => reply(ack, () => { requireAdmin(); game.startFinalMystery(); return {}; }));
+  socket.on("game:reveal-mystery", (_, ack) => reply(ack, () => { requireAdmin(); game.revealMystery(); return {}; }));
   socket.on("disconnect", () => { if (teamId) game.disconnectTeam(teamId); });
 }

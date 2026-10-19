@@ -13,6 +13,8 @@ export function LobbyPage({
     { length: 7 },
     (_, index) => state.teams[index] || null,
   );
+  const connectedTeamCount = state.teams.filter((item) => item.isConnected).length;
+
 
   return (
     <main className="figma-lobby">
@@ -39,8 +41,8 @@ export function LobbyPage({
               <span>CÁC ĐỘI TRONG PHÒNG</span>
             </div>
             <strong>
-              {state.teams.length} / 7{" "}
-              {state.teams.length === 7 ? "SẴN SÀNG" : "ĐÃ VÀO"}
+              {connectedTeamCount} / 7{" "}
+              {connectedTeamCount === 7 ? "SẴN SÀNG" : "ĐANG KẾT NỐI"}
             </strong>
           </div>
           <div className="figma-team-grid">

@@ -8,16 +8,48 @@ const makeGame = () => new GameService({ config });
 describe("GameService", () => {
   it("joins unique teams and never exposes session tokens publicly", () => {
     const game = makeGame();
-    const joined = game.joinTeam("Invisible Hands");
+    const joined = game.joinTeam("Team 1");
     expect(joined.sessionToken).toHaveLength(48);
     expect(game.publicState().teams[0].sessionToken).toBeUndefined();
-    expect(() => game.joinTeam("invisible hands")).toThrow("Tên đội đã được sử dụng");
+    expect(() => game.joinTeam("team 1")).toThrow("Tên đội đã được sử dụng");
+  });
+
+  it("allows a disconnected team name to rejoin and rotates its session token", () => {
+    const game = makeGame();
+    const firstJoin = game.joinTeam("Team 1");
+    game.disconnectTeam(firstJoin.team.id);
+
+    const secondJoin = game.joinTeam("team 1");
+
+    expect(secondJoin.team.id).toBe(firstJoin.team.id);
+    expect(secondJoin.team.isConnected).toBe(true);
+    expect(secondJoin.sessionToken).not.toBe(firstJoin.sessionToken);
+    expect(game.state.teams).toHaveLength(1);
+  });
+
+  it("starts with and allows selecting only connected teams", () => {
+    const game = makeGame();
+    const offline = game.joinTeam("Team 1").team;
+    const first = game.joinTeam("Team 2").team;
+    const second = game.joinTeam("Team 3").team;
+    game.disconnectTeam(offline.id);
+
+    game.start();
+    expect(game.state.currentTeamId).toBe(first.id);
+
+    const source = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(first.id, (source.correctAnswer + 1) % 4);
+    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(() => game.selectNextTeam(first.id, offline.id)).toThrow("mất kết nối");
+
+    game.selectNextTeam(first.id, second.id);
+    expect(game.state.currentTeamId).toBe(second.id);
   });
 
   it("allows only the active team to select and answer", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.start();
     expect(() => game.selectQuestion(second.id)).toThrow("chưa đến lượt");
     game.selectQuestion(first.id);
@@ -27,7 +59,7 @@ describe("GameService", () => {
 
   it("awards exactly one token for a correct answer", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.start();
     game.selectQuestion(first.id);
     const question = game.publicState().currentQuestion;
@@ -41,7 +73,7 @@ describe("GameService", () => {
 
   it("requires queue membership and consumes a token on submit", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.start();
     game.selectQuestion(first.id);
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
@@ -56,8 +88,8 @@ describe("GameService", () => {
 
   it("enters Guess Phase after an incorrect answer when a team is queued, or goes to SELECT_NEXT_TEAM if queue is empty", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.getTeam(second.id).guessTokens = 1;
     game.start();
     game.requestGuess(second.id);
@@ -74,7 +106,7 @@ describe("GameService", () => {
 
   it("opens Guess Phase after a correct answer only when the queue has a team", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.start();
     game.selectQuestion(first.id);
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
@@ -91,7 +123,7 @@ describe("GameService", () => {
 
   it("skips an empty Guess Queue after a correct answer", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.start();
     game.selectQuestion(first.id);
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
@@ -102,7 +134,7 @@ describe("GameService", () => {
 
   it("preserves the remaining deadline while paused", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.start();
     game.selectQuestion(first.id);
     game.pause();
@@ -115,8 +147,8 @@ describe("GameService", () => {
 
   it("handles saveGuess: goes to SELECT_NEXT_TEAM when queue empty, or GUESS_PHASE when others queued", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, source.correctAnswer);
@@ -134,8 +166,8 @@ describe("GameService", () => {
 
   it("disallows non-current team or admin from selecting next team", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, source.correctAnswer);
@@ -146,8 +178,8 @@ describe("GameService", () => {
 
   it("advances queue immediately after an incorrect character guess", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.getTeam(first.id).guessTokens = 1;
     game.getTeam(second.id).guessTokens = 1;
     game.start();
@@ -173,7 +205,7 @@ describe("GameService", () => {
 
   it("allows active team with reserve tokens to guess even after answering question wrong", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.getTeam(first.id).guessTokens = 2; // Has reserve tokens
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
@@ -192,7 +224,7 @@ describe("GameService", () => {
 
   it("allows a team with multiple tokens to continue guessing if queue empty, or re-queue if others waiting", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
+    const first = game.joinTeam("Team 1").team;
     game.getTeam(first.id).guessTokens = 2; // 2 tokens
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
@@ -219,8 +251,8 @@ describe("GameService", () => {
 
   it("skips waiting and immediately opens SELECT_NEXT_TEAM when active team answers wrong and no team has guess tokens", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     // Answer wrong with 0 tokens and no one else has tokens
@@ -232,8 +264,8 @@ describe("GameService", () => {
 
   it("triggers FINAL_MYSTERY when 12 pieces completed and grants free token if all teams have 0 tokens", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     // Mark 11 pieces as locked
     for (let i = 0; i < 11; i++) {
       game.state.puzzle[i].status = "locked";
@@ -267,10 +299,10 @@ describe("GameService", () => {
     expect(game.state.puzzle.every((p) => p.status === "revealed")).toBe(true);
   });
 
-  it("finishes with no winner when 12 pieces are opened and nobody registers in FINAL_MYSTERY", () => {
+  it("finishes with no winner after 5s countdown when 12 pieces are opened and nobody registers in FINAL_MYSTERY", () => {
     const game = makeGame();
-    const first = game.joinTeam("Team One").team;
-    const second = game.joinTeam("Team Two").team;
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
     for (let i = 0; i < 11; i++) {
       game.state.puzzle[i].status = "locked";
     }
@@ -279,12 +311,30 @@ describe("GameService", () => {
     game.answer(first.id, (source.correctAnswer + 1) % 4);
 
     expect(game.state.phase).toBe(PHASES.FINAL_MYSTERY);
-    // Nobody registers, 10s expires
+    // Nobody registers, 10s expires -> directly finishes with no winner (portrait kept veiled until admin reveals)
     game.advanceFinalMysteryToAnswering();
-
-    // Ends game with no winner and reveals portrait
     expect(game.state.phase).toBe(PHASES.FINISHED);
     expect(game.state.winner).toBeNull();
+    expect(game.state.mysteryRevealed).toBe(false);
+
+    // Only when admin clicks reveal does it reveal portrait and answer
+    game.revealMystery();
+    expect(game.state.mysteryRevealed).toBe(true);
+    expect(game.state.revealedAnswer).toBe("Adam Smith");
+    expect(game.state.puzzle.every((p) => p.status === "revealed")).toBe(true);
+  });
+
+  it("allows admin to reveal mystery and answer at any time", () => {
+    const game = makeGame();
+    game.joinTeam("Team 1");
+    game.start();
+    expect(game.state.mysteryRevealed).toBe(false);
+
+    game.revealMystery();
+    expect(game.state.phase).toBe(PHASES.FINISHED);
+    expect(game.state.mysteryRevealed).toBe(true);
+    expect(game.state.revealedAnswer).toBe("Adam Smith");
     expect(game.state.puzzle.every((p) => p.status === "revealed")).toBe(true);
   });
 });
+

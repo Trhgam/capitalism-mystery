@@ -54,12 +54,27 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                   </div>
                   <div>
                     <span className="fm-phase-badge">
-                      {isRegPhase ? "GIAI ĐOẠN 1: ĐĂNG KÝ VÀO QUEUE (10 GIÂY)" : "GIAI ĐOẠN 2: TRẢ LỜI CÂU HỎI (15 GIÂY)"}
+                      {isRegPhase
+                        ? "GIAI ĐOẠN 1: ĐĂNG KÝ VÀO QUEUE (10 GIÂY)"
+                        : "GIAI ĐOẠN 2: TRẢ LỜI CÂU HỎI (15 GIÂY)"}
                     </span>
                     <h2 className="fm-title">VÒNG GỢI Ý QUYẾT ĐỊNH</h2>
                   </div>
                   <div className="fm-countdown-wrap">
                     <Countdown deadline={state.deadline} serverNow={state.serverNow} />
+                  </div>
+                </div>
+
+                {/* Announcement Notice explaining WHY Final Mystery is triggered */}
+                <div className="fm-trigger-reason-banner">
+                  <span className="fm-reason-icon">✦</span>
+                  <div className="fm-reason-text-wrap">
+                    <strong className="fm-reason-heading">
+                      12 CÂU HỎI ĐÃ HOÀN TẤT – CHƯA CÓ ĐỘI NÀO ĐOÁN ĐƯỢC NHÂN VẬT!
+                    </strong>
+                    <p className="fm-reason-sub">
+                      Bức tranh tạm thời được che lại. Các đội có lượt dự đoán đăng ký tham gia giải mã câu hỏi tối hậu để tìm ra nhà vô địch.
+                    </p>
                   </div>
                 </div>
 
@@ -77,12 +92,15 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                       <div className="fm-reg-banner success">
                         ✓ Đội bạn đã vào Queue dự đoán thành công! Chuẩn bị trả lời khi hết 10 giây.
                       </div>
-                    ) : (
+                    ) : (self?.guessTokens || 0) > 0 ? (
                       <div className="fm-reg-action-row">
                         <button
                           type="button"
                           className="fm-reg-btn"
-                          onClick={() => actions?.requestGuess?.()}
+                          onClick={() => {
+                            if (actions?.registerFinalMystery) actions.registerFinalMystery();
+                            else if (actions?.requestGuess) actions.requestGuess();
+                          }}
                         >
                           Đăng ký dự đoán (Dùng 1 Token) <span>→</span>
                         </button>
@@ -91,6 +109,10 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                             ★ Cả phòng hết token: Đội bạn đã được cấp 1 Final Chance Token miễn phí!
                           </span>
                         )}
+                      </div>
+                    ) : (
+                      <div className="fm-no-tokens-banner">
+                        ✕ Đội bạn không còn lượt dự đoán (0 Token) nên không thể tham gia vòng này.
                       </div>
                     )}
 
@@ -177,63 +199,60 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
               viewBox="0 0 800 600"
               preserveAspectRatio="none"
             >
-            {jigsawLayout.map((jigsaw) => {
-              const pieceState = pieces.find((p) => p.index === jigsaw.index) || {
-                status: "hidden",
-              };
-              const isRevealed = finished || pieceState.status === "revealed";
-              const isLocked = !finished && pieceState.status === "locked";
+              {jigsawLayout.map((jigsaw) => {
+                const pieceState = pieces.find((p) => p.index === jigsaw.index) || {
+                  status: "hidden",
+                };
+                const isRevealed = finished || pieceState.status === "revealed";
+                const isLocked = !finished && pieceState.status === "locked";
 
-              if (isRevealed) {
-                // When revealed, piece is transparent so image shows
-                return null;
-              }
+                if (isRevealed) {
+                  // When revealed, piece is transparent so image shows
+                  return null;
+                }
 
-              return (
-                <g
-                  key={jigsaw.index}
-                  className={`jigsaw-piece ${isLocked ? "locked" : "hidden"}`}
-                >
-                  <path
-                    d={jigsaw.path}
-                    className="jigsaw-path"
-                  />
-                  {/* Piece index number */}
-                  <text
-                    x={jigsaw.labelX}
-                    y={jigsaw.labelY}
-                    className="jigsaw-label"
+                return (
+                  <g
+                    key={jigsaw.index}
+                    className={`jigsaw-piece ${isLocked ? "locked" : "hidden"}`}
                   >
-                    {jigsaw.displayNumber}
-                  </text>
-                  {/* Center coin/badge */}
-                  <circle
-                    cx={jigsaw.centerX}
-                    cy={jigsaw.centerY}
-                    r="20"
-                    className="jigsaw-circle"
-                  />
-                  <text
-                    x={jigsaw.centerX}
-                    y={jigsaw.centerY + 1}
-                    className="jigsaw-symbol"
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                  >
-                    {isLocked ? "✕" : "$"}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        )}
-      </div>
+                    <path
+                      d={jigsaw.path}
+                      className="jigsaw-path"
+                    />
+                    {/* Piece index number */}
+                    <text
+                      x={jigsaw.labelX}
+                      y={jigsaw.labelY}
+                      className="jigsaw-label"
+                    >
+                      {jigsaw.displayNumber}
+                    </text>
+                    {/* Center coin/badge */}
+                    <circle
+                      cx={jigsaw.centerX}
+                      cy={jigsaw.centerY}
+                      r="20"
+                      className="jigsaw-circle"
+                    />
+                    <text
+                      x={jigsaw.centerX}
+                      y={jigsaw.centerY + 1}
+                      className="jigsaw-symbol"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      {isLocked ? "✕" : "$"}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
 
         {/* Puzzle Footer Note & Legend */}
         <div className="puzzle-card-footer">
-          <span className="puzzle-note">
-            Mảnh ghép được chọn ngẫu nhiên từ ngoài vào trong
-          </span>
           <div className="puzzle-legend">
             <span className="legend-item">
               <i className="legend-icon opened" /> Đã mở

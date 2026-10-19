@@ -69,8 +69,8 @@ export function useGame({ adminMode }) {
   }, [adminMode]);
 
   const actions = useMemo(() => ({
-    async join(name) {
-      const response = await run("team:join", { name });
+    async join(teamNumber) {
+      const response = await run("team:join", { teamNumber });
       localStorage.setItem("capitalism-mystery-team-token", response.sessionToken);
       setTeam(response.team);
     },
@@ -90,6 +90,8 @@ export function useGame({ adminMode }) {
     resume: () => run("game:resume"),
     reset: () => run("game:reset"),
     startFinalMystery: () => run("game:start-final-mystery"),
+    registerFinalMystery: () => run("final:register"),
+    revealMystery: () => run("game:reveal-mystery"),
   }), [run]);
 
   return { state, team, connected, error, setError, adminAuthenticated, actions };

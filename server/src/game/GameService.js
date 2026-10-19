@@ -24,6 +24,7 @@ export const FINAL_MYSTERY_QUESTION = Object.freeze({
 
 const cleanName = (value) => value.trim().replace(/\s+/g, " ");
 export const normalizeGuess = (value) => cleanName(value).toLocaleLowerCase("vi").replace(/[.]/g, "");
+export const FIXED_TEAM_NAMES = Object.freeze(["Team 1", "Team 2", "Team 3", "Team 5", "Team 6", "Team 7", "Team 8"]);
 
 const makeInitialState = () => ({
   id: randomUUID(),
@@ -43,6 +44,8 @@ const makeInitialState = () => ({
   finalGuess: false,
   finalMystery: null, // { subphase: "REGISTRATION" | "ANSWERING", registeredTeamIds: [], answeredTeamIds: [] }
   lastGuessResult: null, // { teamId, teamName, answer, isCorrect, submittedAt }
+  mysteryRevealed: false,
+  revealedAnswer: null,
   createdAt: new Date().toISOString(),
 });
 
@@ -51,7 +54,20 @@ export class GameService extends EventEmitter {
     super();
     this.persistence = persistence;
     this.config = config;
-    this.state = initialState || persistence?.load() || makeInitialState();
+    const persistedState = initialState ? null : persistence?.load();
+    this.state = initialState || persistedState || makeInitialState();
+
+    // A server restart closes every Socket.IO connection. Do not trust the
+    // connection flags stored in SQLite from the previous process.
+    if (persistedState) {
+      if (this.state.phase === PHASES.LOBBY) {
+        this.state.teams = this.state.teams.filter((team) =>
+          FIXED_TEAM_NAMES.some((name) => name.toLocaleLowerCase("vi") === team.name.toLocaleLowerCase("vi")),
+        );
+      }
+      this.state.teams.forEach((team) => { team.isConnected = false; });
+      this.persistence?.save(this.state);
+    }
     if (this.state.phase === PHASES.SELECT_QUESTION && this.state.currentTeamId) {
       try {
         this.drawQuestionForCurrentTeam();
@@ -83,10 +99,29 @@ export class GameService extends EventEmitter {
 
   joinTeam(rawName) {
     if (this.state.phase !== PHASES.LOBBY) throw new Error("Trận đấu đã bắt đầu.");
-    const name = cleanName(rawName);
-    if (name.length < 2 || name.length > 24) throw new Error("Tên đội phải có từ 2 đến 24 ký tự.");
+    const requestedName = cleanName(rawName);
+    const name = FIXED_TEAM_NAMES.find(
+      (item) => item.toLocaleLowerCase("vi") === requestedName.toLocaleLowerCase("vi"),
+    );
+    if (!name) throw new Error("Đội không hợp lệ. Vui lòng chọn một đội trong danh sách.");
+    const existingTeam = this.state.teams.find(
+      (team) => team.name.toLocaleLowerCase("vi") === name.toLocaleLowerCase("vi"),
+    );
+
+    // Let a new browser reclaim an old, disconnected team name. Rotate the
+    // token so the previous browser session can no longer take it back.
+    if (existingTeam) {
+      if (existingTeam.isConnected) throw new Error("Tên đội đã được sử dụng.");
+      existingTeam.isConnected = true;
+      existingTeam.sessionToken = randomBytes(24).toString("hex");
+      this.commit("team.rejoin", existingTeam.id, { name: existingTeam.name });
+      return {
+        team: { ...existingTeam, sessionToken: undefined },
+        sessionToken: existingTeam.sessionToken,
+      };
+    }
+
     if (this.state.teams.length >= 7) throw new Error("Phòng đã đủ 7 đội.");
-    if (this.state.teams.some((team) => team.name.toLowerCase() === name.toLowerCase())) throw new Error("Tên đội đã được sử dụng.");
 
     const team = {
       id: randomUUID(),
@@ -145,8 +180,9 @@ export class GameService extends EventEmitter {
 
   start() {
     if (this.state.phase !== PHASES.LOBBY) throw new Error("Trận đấu không ở trạng thái chờ.");
-    if (this.state.teams.length < 1) throw new Error("Cần ít nhất một đội để bắt đầu.");
-    this.state.currentTeamId = this.state.teams[0].id;
+    const connectedTeams = this.state.teams.filter((team) => team.isConnected);
+    if (connectedTeams.length < 1) throw new Error("Cần ít nhất một đội đang kết nối để bắt đầu.");
+    this.state.currentTeamId = connectedTeams[0].id;
     this.state.roundNumber = 1;
     this.drawQuestionForCurrentTeam();
     this.commit("game.start");
@@ -341,8 +377,7 @@ export class GameService extends EventEmitter {
   advanceFinalMysteryToAnswering() {
     if (this.state.phase !== PHASES.FINAL_MYSTERY) return;
     if (this.state.finalMystery.registeredTeamIds.length === 0) {
-      // Hết giờ đăng ký mà không ai đăng ký -> Bắt đầu đếm ngược 5 4 3 2 1 để hiện ảnh và đáp án!
-      return this.triggerFinalMysteryReveal();
+      return this.finishWithNoWinner();
     }
     // Trả lời (15 giây)
     this.state.finalMystery.subphase = "ANSWERING";
@@ -350,19 +385,22 @@ export class GameService extends EventEmitter {
     this.commit("final-mystery.answering");
   }
 
-  triggerFinalMysteryReveal() {
-    if (this.state.phase !== PHASES.FINAL_MYSTERY) return;
-    this.state.finalMystery.subphase = "REVEAL";
-    this.state.deadline = Date.now() + 5000;
-    this.commit("final-mystery.reveal-countdown");
-  }
-
   finishWithNoWinner() {
     this.state.phase = PHASES.FINISHED;
     this.state.deadline = null;
     this.state.winner = null;
+    this.state.mysteryRevealed = false;
+    this.state.revealedAnswer = null;
+    this.commit("game.finished", null, { noWinner: true, mysteryRevealed: false });
+  }
+
+  revealMystery() {
+    this.state.phase = PHASES.FINISHED;
+    this.state.deadline = null;
+    this.state.mysteryRevealed = true;
+    this.state.revealedAnswer = "Adam Smith";
     this.state.puzzle.forEach((p) => { p.status = "revealed"; });
-    this.commit("game.finished", null, { noWinner: true, revealedAnswer: "Adam Smith" });
+    this.commit("game.mystery-revealed", null, { mysteryRevealed: true, revealedAnswer: "Adam Smith" });
   }
 
   answerFinalMystery(teamId, optionIndex) {
@@ -411,8 +449,7 @@ export class GameService extends EventEmitter {
       this.state.finalMystery.answeredTeamIds.includes(id)
     );
     if (allAnswered) {
-      // Bắt đầu đếm ngược 5 4 3 2 1 để hiện ảnh và đáp án!
-      this.triggerFinalMysteryReveal();
+      this.finishWithNoWinner();
     }
     return { isCorrect: false };
   }
@@ -509,8 +546,10 @@ export class GameService extends EventEmitter {
   selectNextTeam(actorTeamId, nextTeamId) {
     if (this.state.phase !== PHASES.SELECT_NEXT_TEAM) throw new Error("Chưa đến bước chọn đội tiếp theo.");
     this.requireCurrentTeam(actorTeamId);
-    this.requireTeam(nextTeamId);
-    if (nextTeamId === this.state.currentTeamId && this.state.teams.length > 1) throw new Error("Không thể chọn chính đội mình liên tiếp.");
+    const nextTeam = this.requireTeam(nextTeamId);
+    if (!nextTeam.isConnected) throw new Error("Không thể chọn đội đang mất kết nối.");
+    const connectedTeams = this.state.teams.filter((team) => team.isConnected);
+    if (nextTeamId === this.state.currentTeamId && connectedTeams.length > 1) throw new Error("Không thể chọn chính đội mình liên tiếp.");
     this.state.currentTeamId = nextTeamId;
     this.state.guessQueue = [];
     this.state.lastResult = null;
@@ -539,7 +578,9 @@ export class GameService extends EventEmitter {
   }
 
   reset() {
-    const connectedTeams = this.state.teams.map((team) => ({ ...team, guessTokens: 0, score: 0 }));
+    const connectedTeams = this.state.teams
+      .filter((team) => FIXED_TEAM_NAMES.includes(team.name))
+      .map((team) => ({ ...team, guessTokens: 0, score: 0 }));
     this.state = { ...makeInitialState(), teams: connectedTeams };
     this.commit("game.reset");
   }
@@ -553,10 +594,7 @@ export class GameService extends EventEmitter {
       if (this.state.finalMystery?.subphase === "REGISTRATION") {
         this.advanceFinalMysteryToAnswering();
       } else if (this.state.finalMystery?.subphase === "ANSWERING") {
-        this.state.phase = PHASES.FINISHED;
-        this.state.deadline = null;
-        this.state.puzzle.forEach((p) => { p.status = "revealed"; });
-        this.commit("game.finished", null, { noWinner: true, timedOut: true });
+        this.finishWithNoWinner();
       }
     }
   }

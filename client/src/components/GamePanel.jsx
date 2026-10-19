@@ -39,10 +39,12 @@ export function GamePanel({ state, self, adminMode, actions }) {
         <div className="quiz-card-header">
           <div className="quiz-meta-left">
             <span className="quiz-category-tag">
-              {state.currentQuestion?.category || (state.phase === "SELECT_QUESTION" ? "CHUẨN BỊ" : "CÂU HỎI")}
+              {state.phase === "FINAL_MYSTERY"
+                ? "FINAL MYSTERY"
+                : state.currentQuestion?.category || (state.phase === "SELECT_QUESTION" ? "CHUẨN BỊ" : "CÂU HỎI")}
             </span>
             <span className="quiz-team-turn">
-              {state.phase === "FINAL_CLUE_PHASE"
+              {state.phase === "FINAL_MYSTERY" || state.phase === "FINAL_CLUE_PHASE"
                 ? "VÒNG GỢI Ý QUYẾT ĐỊNH"
                 : `CÂU HỎI CHO ${activeTeam?.name || "ĐỘI CHƠI"}`}
             </span>
@@ -55,43 +57,16 @@ export function GamePanel({ state, self, adminMode, actions }) {
 
         {/* Main Content Body based on Phase */}
         <div className="quiz-card-body">
-          {/* Phase: FINAL_CLUE_PHASE */}
-          {state.phase === "FINAL_CLUE_PHASE" && state.currentQuestion && (
-            <>
-              <div className={`final-clue-banner ${hasTokens ? "eligible" : "ineligible"}`}>
-                <span className="final-clue-icon">✦</span>
-                <div>
-                  <strong>VÒNG GỢI Ý TỐI HẬU</strong>
-                  <p>
-                    {hasTokens
-                      ? `Đội bạn có ${self?.guessTokens} lượt dự đoán dự trữ. Chọn đáp án chính xác để chiến thắng!`
-                      : "Đội bạn không có lượt dự đoán dự trữ nên không thể tham gia vòng này. Đang chờ các đội khác..."}
-                  </p>
-                </div>
-              </div>
-
-              <h2 className="quiz-question-title final-clue-title">
-                {state.currentQuestion.text}
-              </h2>
-
-              <div className="quiz-options-grid">
-                {state.currentQuestion.options.map((option, index) => {
-                  const letter = String.fromCharCode(65 + index);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      disabled={!hasTokens}
-                      className="quiz-option-card final-clue-option"
-                      onClick={() => actions.answer(index)}
-                    >
-                      <span className="option-letter-badge">{letter}</span>
-                      <span className="option-content-text">{option}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+          {/* Phase: FINAL_MYSTERY */}
+          {state.phase === "FINAL_MYSTERY" && (
+            <div className="quiz-prompt-state">
+              <h2 className="quiz-question-title">Vòng Gợi Ý Quyết Định</h2>
+              <p className="quiz-waiting-text">
+                {state.finalMystery?.subphase === "REGISTRATION"
+                  ? "Các đội theo dõi câu hỏi và đăng ký tại Bảng Trung Tâm."
+                  : "Các đội đã đăng ký chọn đáp án A, B, C, D tại Bảng Trung Tâm."}
+              </p>
+            </div>
           )}
 
           {/* Phase: SELECT_QUESTION (auto-starts immediately without any confirm button) */}
@@ -281,7 +256,9 @@ export function GamePanel({ state, self, adminMode, actions }) {
                   {state.teams
                     .filter(
                       (team) =>
-                        team.id !== state.currentTeamId || state.teams.length === 1
+                        team.isConnected &&
+                        (team.id !== state.currentTeamId ||
+                          state.teams.filter((item) => item.isConnected).length === 1)
                     )
                     .map((team) => (
                       <button
@@ -322,8 +299,8 @@ export function GamePanel({ state, self, adminMode, actions }) {
                   : "Trả lời sai: hệ thống sẽ xét hàng đợi hoặc chuyển sang chọn đội tiếp theo."
                 : state.phase === "GUESS_PHASE"
                   ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
-                  : state.phase === "FINAL_CLUE_PHASE"
-                    ? "Vòng gợi ý tối hậu: Các đội có lượt dự đoán dự trữ chọn đáp án để quyết định chiến thắng!"
+                  : state.phase === "FINAL_MYSTERY" || state.phase === "FINAL_CLUE_PHASE"
+                    ? "Vòng Final Mystery: Giải mã gợi ý tối hậu để phân định người chiến thắng chung cuộc!"
                     : state.phase === "SELECT_NEXT_TEAM"
                       ? "Đội vừa chơi đang chọn đội tiếp theo tham gia trả lời câu hỏi."
                       : "Hệ thống đang chuẩn bị cho vòng tiếp theo."}
@@ -332,7 +309,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
       </section>
 
       {/* Action Banner directly below Question Card */}
-      {state.phase !== "FINAL_CLUE_PHASE" && (
+      {state.phase !== "FINAL_MYSTERY" && state.phase !== "FINAL_CLUE_PHASE" && (
         <div className="puzzle-guess-bar">
         <div className="puzzle-guess-text">
           <strong>Đã nhận ra nhân vật?</strong>

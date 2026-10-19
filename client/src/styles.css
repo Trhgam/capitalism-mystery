@@ -48,6 +48,12 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .join-card label { display: block; margin: 34px 0 16px; color: var(--purple); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 .join-card input, .guess-phase input { width: 100%; margin-top: 9px; padding: 15px 16px; border: 1px solid var(--line); outline: none; background: white; color: var(--ink); }
 .join-card input:focus, .guess-phase input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(61,61,87,.08); }
+.fixed-team-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 28px 0 18px; }
+.fixed-team-option { min-height: 66px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; padding: 12px 14px; border: 1px solid rgba(61,61,87,.18); color: var(--purple); background: #fff; text-align: left; transition: border-color .15s, transform .15s, background .15s; }
+.fixed-team-option:hover:not(:disabled) { border-color: var(--purple); background: #f8f0df; transform: translateY(-1px); }
+.fixed-team-option span { font-weight: 700; }
+.fixed-team-option small { color: #8f8060; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.fixed-team-option:disabled { background: #eeeae2; }
 .join-card > small { display: block; margin-top: 15px; color: #8f887b; text-align: center; }
 .form-error, .global-error { padding: 10px 12px; color: #852e2e; background: #fff0ed; border-left: 3px solid var(--red); font-size: 13px; }
 .center-page { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(135deg, var(--purple), #242336); }
@@ -1021,13 +1027,101 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .admin-actions button { padding: 9px 14px; }
 .admin-actions .danger { background: var(--red); }
 
-.winner-page { min-height: 100vh; display: grid; grid-template-columns: 1.15fr .85fr; background: var(--purple); color: white; }
-.winner-art { display: grid; align-items: center; padding: clamp(20px, 5vw, 80px); background: var(--cream); }
-.winner-copy { padding: clamp(30px, 6vw, 90px); display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
-.winner-copy h1 { margin: 12px 0 40px; color: var(--gold); font: italic 700 clamp(52px, 7vw, 100px)/.9 "Playfair Display", serif; }
-.winner-copy > p { margin: 0; color: var(--gold); text-transform: uppercase; letter-spacing: .15em; font-size: 11px; }
-.winner-copy > strong { margin: 8px 0 30px; font: 700 34px "Playfair Display", serif; }
-.winner-copy blockquote { margin: 10px 0 40px; padding-left: 20px; border-left: 2px solid var(--gold); color: #d9d3c8; font-family: "Playfair Display", serif; font-style: italic; line-height: 1.6; }
+.winner-page {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  background: var(--purple);
+  color: white;
+}
+
+.winner-art {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 32px;
+  background: var(--cream);
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.winner-art .puzzle-section {
+  width: 100%;
+  max-width: 580px;
+  max-height: 94vh;
+}
+
+.winner-copy {
+  padding: clamp(18px, 3vh, 36px) clamp(24px, 3vw, 44px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.winner-copy .eyebrow {
+  font-family: "DM Sans", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.winner-copy h1 {
+  margin: 4px 0 12px;
+  color: var(--gold);
+  font-family: "Playfair Display", Georgia, serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: clamp(24px, 2.5vw, 38px);
+  line-height: 1.15;
+}
+
+.winner-copy .winner-years {
+  font-size: 0.65em;
+  font-style: normal;
+  font-weight: 400;
+  color: rgba(255, 217, 120, 0.85);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.winner-copy > p {
+  margin: 0;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: 11px;
+}
+
+.winner-copy > strong {
+  margin: 4px 0 12px;
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(18px, 1.8vw, 24px);
+}
+
+.winner-copy blockquote {
+  margin: 6px 0 12px;
+  padding: 6px 12px;
+  border-left: 3px solid var(--gold);
+  color: #eae5dc;
+  font-family: "Playfair Display", Georgia, serif;
+  font-style: italic;
+  font-size: clamp(12.5px, 0.95vw, 14px);
+  line-height: 1.5;
+  background: rgba(212, 175, 55, 0.06);
+  border-radius: 0 8px 8px 0;
+}
 
 /* Responsive adjustments that preserve 3-column layout */
 @media (max-width: 1366px) {
@@ -1362,6 +1456,18 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   font-weight: 500;
 }
 
+.fm-no-tokens-banner {
+  padding: 10px 14px;
+  background: rgba(231, 76, 60, 0.15);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 8px;
+  color: #ff9b90;
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .fm-queue-chips {
   background: rgba(0, 0, 0, 0.25);
   border-radius: 8px;
@@ -1490,5 +1596,70 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   font-weight: 600;
   color: #f7eedb;
 }
+
+/* FM Dramatic Reveal Block (Countdown 5 4 3 2 1) */
+.fm-reveal-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px 20px;
+  background: radial-gradient(circle at center, rgba(156, 40, 40, 0.25) 0%, rgba(22, 24, 35, 0.85) 100%);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  border-radius: 14px;
+  animation: fmPulseGlow 1.5s infinite alternate ease-in-out;
+}
+
+@keyframes fmPulseGlow {
+  0% { box-shadow: 0 0 12px rgba(212, 175, 55, 0.2); }
+  100% { box-shadow: 0 0 28px rgba(231, 76, 60, 0.45); }
+}
+
+/* FM Trigger Reason Notice Banner */
+.fm-trigger-reason-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.fm-reason-icon {
+  font-size: 16px;
+  color: #ffd978;
+  line-height: 1.2;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fm-reason-text-wrap {
+  flex: 1;
+}
+
+.fm-reason-heading {
+  display: block;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffd978;
+  letter-spacing: 0.04em;
+  margin-bottom: 3px;
+}
+
+.fm-reason-sub {
+  font-family: "DM Sans", sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(247, 238, 219, 0.88);
+  margin: 0;
+}
+
+
+
 
 
