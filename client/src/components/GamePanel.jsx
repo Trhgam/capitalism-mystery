@@ -19,7 +19,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
     hasTokens &&
     !isWaitingInQueue &&
     (state.phase === "ANSWERING" ||
-      state.phase === "ANSWER_RESULT" ||
+      (state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect) ||
       state.phase === "GUESS_PHASE" ||
       state.phase === "FINAL_MYSTERY");
 
@@ -296,7 +296,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
               : state.phase === "ANSWER_RESULT"
                 ? state.lastResult?.isCorrect
                   ? "Đội hiện tại có thể chọn Dự đoán ngay hoặc Lưu lượt đoán cho vòng sau."
-                  : "Trả lời sai: hệ thống sẽ xét hàng đợi hoặc chuyển sang chọn đội tiếp theo."
+                  : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
                 : state.phase === "GUESS_PHASE"
                   ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
                   : state.phase === "FINAL_MYSTERY" || state.phase === "FINAL_CLUE_PHASE"
@@ -317,7 +317,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
         </div>
 
         <div className="puzzle-guess-actions">
-          {state.phase === "ANSWER_RESULT" && isActive && hasTokens ? (
+          {state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect && isActive && hasTokens ? (
             <>
               <button
                 type="button"

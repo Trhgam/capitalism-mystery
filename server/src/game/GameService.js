@@ -221,21 +221,9 @@ export class GameService extends EventEmitter {
     this.state.lastResult = { isCorrect, timedOut, chosenAnswer: optionIndex, correctAnswer: question.correctAnswer, teamId: team.id, pieceIndex: piece?.index ?? null };
     this.state.phase = PHASES.ANSWER_RESULT;
 
-    const activeHasTokens = team.guessTokens > 0;
-    const hasQueued = this.state.guessQueue.some((item) => item.status === "waiting");
-    const anyTeamHasTokens = this.state.teams.some((t) => t.guessTokens > 0);
-
-    // If current team has 0 tokens AND no one in queue AND no team in game has any tokens:
-    // Skip waiting completely and advance immediately!
-    if (!activeHasTokens && !hasQueued && !anyTeamHasTokens) {
-      this.commit("question.result", team.id, { isCorrect, timedOut });
-      return this.advanceAfterAnswerResult();
-    }
-
-    // Otherwise:
-    // - Active team has tokens: allow full decision window (12s) to choose "Dự đoán ngay" or "Lưu lượt đoán"
-    // - Active team has 0 tokens, but someone is queued or has reserve tokens: brief 2s feedback before queue begins
-    const resultSeconds = activeHasTokens ? this.config.guessRegistrationSeconds : 2;
+    // A wrong answer is shown briefly, then moves directly to team selection.
+    // Only a correct answer opens the longer Guess Queue decision window.
+    const resultSeconds = isCorrect ? this.config.guessRegistrationSeconds : 2;
     this.state.deadline = Date.now() + resultSeconds * 1000;
     this.commit("question.result", team.id, { isCorrect, timedOut });
     return this.state.lastResult;
@@ -248,6 +236,9 @@ export class GameService extends EventEmitter {
     }
     if (this.state.phase === PHASES.FINAL_MYSTERY) {
       return this.registerFinalMystery(teamId);
+    }
+    if (this.state.phase === PHASES.ANSWER_RESULT && !this.state.lastResult?.isCorrect) {
+      throw new Error("Trả lời sai không mở vòng dự đoán.");
     }
     if (team.guessTokens < 1) throw new Error("Đội chưa có Guess Token.");
     if (this.state.guessQueue.some((item) => item.teamId === teamId && item.status === "waiting")) {
@@ -297,6 +288,9 @@ export class GameService extends EventEmitter {
 
   beginGuessPhase() {
     if (![PHASES.ANSWER_RESULT, PHASES.GUESS_PHASE].includes(this.state.phase)) return;
+    if (this.state.phase === PHASES.ANSWER_RESULT && !this.state.lastResult?.isCorrect) {
+      return this.checkFinalMysteryOrAdvance("incorrect-answer");
+    }
     const waitingItems = this.state.guessQueue.filter((item) => item.status === "waiting");
     if (waitingItems.length === 0) return this.checkFinalMysteryOrAdvance("empty-guess-queue");
     this.state.phase = PHASES.GUESS_PHASE;
@@ -308,6 +302,9 @@ export class GameService extends EventEmitter {
 
   advanceAfterAnswerResult() {
     if (this.state.phase !== PHASES.ANSWER_RESULT) return;
+    if (!this.state.lastResult?.isCorrect) {
+      return this.checkFinalMysteryOrAdvance("incorrect-answer");
+    }
     const waitingItems = this.state.guessQueue.filter((item) => item.status === "waiting");
     if (waitingItems.length > 0) {
       return this.beginGuessPhase();

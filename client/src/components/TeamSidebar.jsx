@@ -1,13 +1,15 @@
 export function TeamSidebar({ teams, currentTeamId, selfId, guessQueue = [] }) {
+  const connectedTeams = teams.filter((team) => team.isConnected);
+
   return (
     <aside className="team-sidebar-panel">
       <div className="team-sidebar-header">
         <span className="team-sidebar-title">CÁC ĐỘI</span>
-        <span className="team-sidebar-count">{teams.length}</span>
+        <span className="team-sidebar-count">{connectedTeams.length}</span>
       </div>
 
       <div className="team-sidebar-list">
-        {teams.map((team) => {
+        {connectedTeams.map((team) => {
           const isActive = team.id === currentTeamId;
           const isSelf = team.id === selfId;
           const queueEntry = guessQueue.find((item) => item.teamId === team.id);
@@ -50,14 +52,6 @@ export function TeamSidebar({ teams, currentTeamId, selfId, guessQueue = [] }) {
           );
         })}
 
-        {Array.from({ length: Math.max(0, 7 - teams.length) }, (_, index) => (
-          <div className="team-item empty-slot" key={`empty-${index}`}>
-            <div className="team-item-avatar empty">?</div>
-            <div className="team-item-info">
-              <span className="team-item-name empty">Đang chờ đội…</span>
-            </div>
-          </div>
-        ))}
       </div>
     </aside>
   );

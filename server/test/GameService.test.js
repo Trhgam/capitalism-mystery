@@ -39,6 +39,7 @@ describe("GameService", () => {
 
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, (source.correctAnswer + 1) % 4);
+    game.advanceAfterAnswerResult();
     expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
     expect(() => game.selectNextTeam(first.id, offline.id)).toThrow("mất kết nối");
 
@@ -86,7 +87,7 @@ describe("GameService", () => {
     expect(game.state.phase).toBe(PHASES.FINISHED);
   });
 
-  it("enters Guess Phase after an incorrect answer when a team is queued, or goes to SELECT_NEXT_TEAM if queue is empty", () => {
+  it("shows an incorrect result briefly, then skips Guess Phase even when a team queued", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
@@ -99,9 +100,8 @@ describe("GameService", () => {
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
     game.advanceAfterAnswerResult();
 
-    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
-    expect(game.state.guessQueue).toHaveLength(1);
-    expect(game.state.guessQueue[0].teamId).toBe(second.id);
+    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.guessQueue).toHaveLength(0);
   });
 
   it("opens Guess Phase after a correct answer only when the queue has a team", () => {
@@ -203,7 +203,7 @@ describe("GameService", () => {
     expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
   });
 
-  it("allows active team with reserve tokens to guess even after answering question wrong", () => {
+  it("does not open guessing after a wrong answer even when the active team has reserve tokens", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     game.getTeam(first.id).guessTokens = 2; // Has reserve tokens
@@ -212,14 +212,12 @@ describe("GameService", () => {
     game.answer(first.id, (source.correctAnswer + 1) % 4); // Answer wrong!
 
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
-    expect(game.state.deadline - Date.now()).toBeGreaterThan(5000); // 12s window
-
-    // Active team requests guess using reserve token
-    game.requestGuess(first.id);
-    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
-    const result = game.submitGuess(first.id, "Adam Smith");
-    expect(result.isCorrect).toBe(true);
-    expect(game.state.phase).toBe(PHASES.FINISHED);
+    expect(game.state.deadline - Date.now()).toBeGreaterThan(1000);
+    expect(game.state.deadline - Date.now()).toBeLessThanOrEqual(2000);
+    expect(() => game.requestGuess(first.id)).toThrow("không mở vòng dự đoán");
+    game.advanceAfterAnswerResult();
+    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.getTeam(first.id).guessTokens).toBe(2);
   });
 
   it("allows a team with multiple tokens to continue guessing if queue empty, or re-queue if others waiting", () => {
@@ -249,7 +247,7 @@ describe("GameService", () => {
     expect(game.state.winner.teamId).toBe(first.id);
   });
 
-  it("skips waiting and immediately opens SELECT_NEXT_TEAM when active team answers wrong and no team has guess tokens", () => {
+  it("shows wrong-answer feedback before opening SELECT_NEXT_TEAM", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
@@ -258,7 +256,9 @@ describe("GameService", () => {
     // Answer wrong with 0 tokens and no one else has tokens
     game.answer(first.id, (source.correctAnswer + 1) % 4);
 
-    // Should skip waiting completely and go to SELECT_NEXT_TEAM immediately
+    expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
+    expect(game.state.lastResult.isCorrect).toBe(false);
+    game.advanceAfterAnswerResult();
     expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
   });
 
@@ -274,6 +274,7 @@ describe("GameService", () => {
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     // First answers 12th piece wrong with 0 tokens
     game.answer(first.id, (source.correctAnswer + 1) % 4);
+    game.advanceAfterAnswerResult();
 
     // All 12 pieces are locked and everyone had 0 tokens
     // Game must enter FINAL_MYSTERY and grant 1 free Final Chance Token to each team!
@@ -309,6 +310,7 @@ describe("GameService", () => {
     game.start();
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, (source.correctAnswer + 1) % 4);
+    game.advanceAfterAnswerResult();
 
     expect(game.state.phase).toBe(PHASES.FINAL_MYSTERY);
     // Nobody registers, 10s expires -> directly finishes with no winner (portrait kept veiled until admin reveals)
