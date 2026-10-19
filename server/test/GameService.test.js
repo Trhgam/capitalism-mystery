@@ -195,14 +195,16 @@ describe("GameService", () => {
     expect(result1.isCorrect).toBe(false);
     expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
 
-    // Second team guesses wrong -> queue now exhausted!
+    // Second team guesses wrong -> shows incorrect feedback!
     const result2 = game.submitGuess(second.id, "John Locke");
     expect(result2.isCorrect).toBe(false);
-    // Queue is empty -> transitions immediately to SELECT_NEXT_TEAM!
+    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
+    // After feedback window expires -> transitions to SELECT_NEXT_TEAM!
+    game.endGuessPhase();
     expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
   });
 
-  it("does not open guessing after a wrong answer even when the active team has reserve tokens", () => {
+  it("allows guessing after a wrong answer when the active team has reserve tokens", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     game.getTeam(first.id).guessTokens = 2; // Has reserve tokens
@@ -211,11 +213,9 @@ describe("GameService", () => {
     game.answer(first.id, (source.correctAnswer + 1) % 4); // Answer wrong!
 
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
-    expect(game.state.deadline - Date.now()).toBeGreaterThan(1000);
-    expect(game.state.deadline - Date.now()).toBeLessThanOrEqual(2000);
-    expect(() => game.requestGuess(first.id)).toThrow("không mở vòng dự đoán");
-    game.advanceAfterAnswerResult();
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.deadline - Date.now()).toBeGreaterThan(2000);
+    expect(() => game.requestGuess(first.id)).not.toThrow();
+    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
     expect(game.getTeam(first.id).guessTokens).toBe(2);
   });
 
@@ -236,7 +236,11 @@ describe("GameService", () => {
     expect(r1.isCorrect).toBe(false);
     expect(game.getTeam(first.id).guessTokens).toBe(2);
 
-    // Because team still has tokens and nobody else is waiting, their turn stays active ("waiting")
+    // Shows incorrect status for feedback window
+    expect(game.state.guessQueue.some((item) => item.teamId === first.id && item.status === "incorrect")).toBe(true);
+
+    // Team can request guess again immediately with remaining tokens
+    game.requestGuess(first.id);
     expect(game.state.guessQueue.some((item) => item.teamId === first.id && item.status === "waiting")).toBe(true);
 
     // Submit second guess correctly!
@@ -362,5 +366,44 @@ describe("GameService", () => {
     expect(game.state.revealedAnswer).toBe("Adam Smith");
     expect(game.state.puzzle.every((p) => p.status === "revealed")).toBe(true);
   });
+
+  it("allows a team with saved tokens to request guess after answering incorrectly", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
+    game.getTeam(second.id).guessTokens = 1; // Team 2 has a saved token
+    game.start();
+
+    // Round 1: first answers correctly and saves token
+    let q = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(first.id, q.correctAnswer);
+    expect(game.getTeam(first.id).guessTokens).toBe(1);
+    game.saveGuess(first.id);
+    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+
+    // First selects second team
+    game.selectNextTeam(first.id, second.id);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
+    expect(game.state.currentTeamId).toBe(second.id);
+
+    // Round 2: Team 2 answers incorrectly
+    q = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(second.id, (q.correctAnswer + 1) % 4);
+    expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
+    expect(game.state.lastResult.isCorrect).toBe(false);
+    expect(game.getTeam(second.id).guessTokens).toBe(1);
+
+    // Team 2 (active team) still has 1 token and requests guess -> must NOT throw, must enter GUESS_PHASE immediately!
+    expect(() => game.requestGuess(second.id)).not.toThrow();
+    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
+    expect(game.state.guessQueue[0].teamId).toBe(second.id);
+
+    // Team 2 submits guess
+    const result = game.submitGuess(second.id, "Adam Smith");
+    expect(result.isCorrect).toBe(true);
+    expect(game.state.phase).toBe(PHASES.FINISHED);
+    expect(game.state.winner.teamName).toBe("Team 2");
+  });
 });
+
 

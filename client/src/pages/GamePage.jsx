@@ -5,14 +5,9 @@ import { GamePanel } from "../components/GamePanel.jsx";
 import { AdminControls } from "../components/AdminControls.jsx";
 
 export function GamePage({ state, team, adminMode, connected, error, actions }) {
-  const liveTeam = state.teams.find((item) => item.id === team?.id) || team;
+  const fallbackTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
+  const liveTeam = (team && state.teams.find((item) => item.id === team.id || (team.name && item.name.toLowerCase() === team.name.toLowerCase()))) || team || (adminMode ? fallbackTeam : null);
   const queueItem = state.guessQueue?.find((item) => item.teamId === liveTeam?.id);
-  const canRequestGuess =
-    liveTeam &&
-    liveTeam.guessTokens > 0 &&
-    !queueItem &&
-    (state.phase === "ANSWERING" ||
-      (state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect));
 
   if (state.phase === "FINISHED") {
     return <Winner state={state} actions={actions} adminMode={adminMode} />;
@@ -28,8 +23,8 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
             <img src="/figma/guess-token.svg" alt="" />
           </span>
           <span>
-            <small>LƯỢT DỰ ĐOÁN</small>
-            <strong>{state.teams.find((t) => t.id === liveTeam?.id)?.guessTokens ?? liveTeam?.guessTokens ?? 0}</strong>
+            <small>{adminMode ? "CHẾ ĐỘ QUẢN TRÒ" : "LƯỢT DỰ ĐOÁN"}</small>
+            <strong>{adminMode ? "HOST" : (state.teams.find((t) => t.id === liveTeam?.id)?.guessTokens ?? liveTeam?.guessTokens ?? 0)}</strong>
           </span>
         </div>
       </header>

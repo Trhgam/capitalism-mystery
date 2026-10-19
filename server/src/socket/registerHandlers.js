@@ -45,32 +45,38 @@ export function registerHandlers(io, socket, game, config) {
     return { authenticated: true };
   }));
 
+  const resolveActorTeamId = (payload) => {
+    const resolved = payload?.teamId || teamId || (isAdmin ? (game.state.currentTeamId || game.state.teams.find((t) => t.isConnected)?.id || game.state.teams[0]?.id) : null);
+    if (!resolved) throw new Error("Cần tham gia đội trước.");
+    return resolved;
+  };
+
   socket.on("game:start", (_, ack) => reply(ack, () => { requireAdmin(); game.start(); return {}; }));
-  socket.on("question:select", (_, ack) => reply(ack, () => { requireTeam(); game.selectQuestion(teamId); return {}; }));
+  socket.on("question:select", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.selectQuestion(actorId); return {}; }));
   socket.on("question:answer", (payload, ack) => reply(ack, () => {
-    requireTeam();
+    const actorId = resolveActorTeamId(payload);
     const data = answerSchema.parse(payload);
     if (game.state.phase === "FINAL_MYSTERY") {
-      return { result: game.answerFinalMystery(teamId, data.optionIndex) };
+      return { result: game.answerFinalMystery(actorId, data.optionIndex) };
     }
-    return { result: game.answer(teamId, data.optionIndex) };
+    return { result: game.answer(actorId, data.optionIndex) };
   }));
   socket.on("final:answer", (payload, ack) => reply(ack, () => {
-    requireTeam();
+    const actorId = resolveActorTeamId(payload);
     const data = answerSchema.parse(payload);
-    return { result: game.answerFinalMystery(teamId, data.optionIndex) };
+    return { result: game.answerFinalMystery(actorId, data.optionIndex) };
   }));
-  socket.on("final:register", (_, ack) => reply(ack, () => {
-    requireTeam();
-    game.registerFinalMystery(teamId);
+  socket.on("final:register", (payload, ack) => reply(ack, () => {
+    const actorId = resolveActorTeamId(payload);
+    game.registerFinalMystery(actorId);
     return {};
   }));
-  socket.on("guess:request", (_, ack) => reply(ack, () => { requireTeam(); game.requestGuess(teamId); return {}; }));
-  socket.on("guess:cancel", (_, ack) => reply(ack, () => { requireTeam(); game.cancelGuess(teamId); return {}; }));
-  socket.on("guess:save", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
-  socket.on("guess:skip", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
-  socket.on("guess:submit", (payload, ack) => reply(ack, () => { requireTeam(); const data = guessSchema.parse(payload); return game.submitGuess(teamId, data.answer); }));
-  socket.on("turn:select-next", (payload, ack) => reply(ack, () => { requireTeam(); const data = nextSchema.parse(payload); game.selectNextTeam(teamId, data.teamId); return {}; }));
+  socket.on("guess:request", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.requestGuess(actorId); return {}; }));
+  socket.on("guess:cancel", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.cancelGuess(actorId); return {}; }));
+  socket.on("guess:save", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
+  socket.on("guess:skip", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
+  socket.on("guess:submit", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); const data = guessSchema.parse(payload); return game.submitGuess(actorId, data.answer); }));
+  socket.on("turn:select-next", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); const data = nextSchema.parse(payload); game.selectNextTeam(actorId, data.teamId); return {}; }));
   socket.on("game:pause", (_, ack) => reply(ack, () => { requireAdmin(); game.pause(); return {}; }));
   socket.on("game:resume", (_, ack) => reply(ack, () => { requireAdmin(); game.resume(); return {}; }));
   socket.on("game:reset", (_, ack) => reply(ack, () => { requireAdmin(); game.reset(); return {}; }));

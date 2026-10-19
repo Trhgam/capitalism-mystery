@@ -20,7 +20,8 @@ export function GamePanel({ state, self, adminMode, actions }) {
     !isWaitingInQueue &&
     (state.phase === "ANSWER_RESULT" ||
       state.phase === "GUESS_PHASE" ||
-      state.phase === "FINAL_MYSTERY");
+      state.phase === "FINAL_MYSTERY" ||
+      state.phase === "SELECT_NEXT_TEAM");
 
   const submitGuess = async (event) => {
     event.preventDefault();
@@ -58,7 +59,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
         <div className="quiz-card-body">
           {/* Phase: FINAL_MYSTERY */}
           {state.phase === "FINAL_MYSTERY" && (
-            <FinalMysteryContent state={state} self={self} actions={actions} />
+            <FinalMysteryContent state={state} self={self} adminMode={adminMode} actions={actions} />
           )}
 
           {/* Phase: SELECT_QUESTION (auto-starts immediately without any confirm button) */}
@@ -170,19 +171,39 @@ export function GamePanel({ state, self, adminMode, actions }) {
                     </div>
                     <h3 className="vintage-status-title">Dự đoán chưa chính xác</h3>
                     <div className="vintage-divider">✦ ❖ ✦</div>
-                    <p className="vintage-status-text">
-                      {hasTokens ? (
-                        <>
-                          Lượt dự đoán vừa rồi chưa chính xác. Bạn vẫn còn{" "}
-                          <strong>{self?.guessTokens} lượt dự đoán</strong>! Hãy nhấn nút{" "}
-                          <em>Dự đoán tiếp</em> bên dưới để tiếp tục vào hàng đợi.
-                        </>
-                      ) : (
-                        "Danh tính của nhà kinh tế học này vẫn còn là một ẩn số. Lượt dự đoán này đã khép lại và 1 Lượt đoán đã được sử dụng."
+                    <div className="vintage-status-text">
+                      {state.lastGuessResult?.answer && (
+                        <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#8b3939" }}>
+                          Bạn đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
+                        </p>
                       )}
-                    </p>
+                      <p style={{ margin: "0 0 6px" }}>
+                        Rất tiếc! Đây chưa phải là nhân vật bí ẩn (-1 lượt đoán).
+                      </p>
+                      {hasTokens ? (
+                        <p style={{ margin: "0", color: "#5a5343" }}>
+                          Đội bạn vẫn còn <strong>{self?.guessTokens} lượt dự đoán</strong>.
+                        </p>
+                      ) : (
+                        <p style={{ margin: "0", color: "#777486" }}>
+                          Đội bạn đã hết lượt dự đoán. Đang chuẩn bị chuyển sang chọn đội tiếp theo…
+                        </p>
+                      )}
+                    </div>
+                    {hasTokens && (
+                      <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
+                        <button
+                          type="button"
+                          className="quiz-primary-btn"
+                          style={{ padding: "8px 16px", fontSize: "12px" }}
+                          onClick={actions.requestGuess}
+                        >
+                          Dự đoán tiếp ngay <span>→</span>
+                        </button>
+                      </div>
+                    )}
                     <span className="vintage-status-tag">
-                      {hasTokens ? `CÒN ${self?.guessTokens} LƯỢT ĐOÁN` : "TIẾP TỤC ĐIỀU TRA"}
+                      {hasTokens ? `CÒN ${self?.guessTokens} LƯỢT ĐOÁN` : "CHUYỂN SANG ĐỘI TIẾP THEO"}
                     </span>
                   </div>
                 ) : queueItem?.status === "waiting" ? (
@@ -226,16 +247,36 @@ export function GamePanel({ state, self, adminMode, actions }) {
                 ) : (
                   <div className="vintage-status-card">
                     <div className="vintage-seal waiting">
-                      <span>🔍</span>
+                      <span>{state.lastGuessResult && !state.lastGuessResult.isCorrect ? "✕" : "🔍"}</span>
                     </div>
-                    <h3 className="vintage-status-title">Cuộc điều tra đang diễn ra</h3>
+                    <h3 className="vintage-status-title">
+                      {state.lastGuessResult && !state.lastGuessResult.isCorrect
+                        ? "Dự đoán chưa chính xác"
+                        : "Cuộc điều tra đang diễn ra"}
+                    </h3>
                     <div className="vintage-divider">✦ ❖ ✦</div>
-                    <p className="vintage-status-text">
-                      {currentGuesserTeam
-                        ? `Đội ${currentGuesserTeam.name} đang tiến hành nhận diện nhà kinh tế học bí ẩn…`
-                        : "Các đội trong hàng đợi đang tiến hành gửi câu trả lời…"}
-                    </p>
-                    <span className="vintage-status-tag">VÒNG ĐIỀU TRA</span>
+                    <div className="vintage-status-text">
+                      {state.lastGuessResult && !state.lastGuessResult.isCorrect ? (
+                        <>
+                          <p style={{ margin: "0 0 6px", color: "#8b3939" }}>
+                            Đội <strong>{state.lastGuessResult.teamName}</strong> vừa dự đoán:{" "}
+                            <em>"{state.lastGuessResult.answer}"</em> nhưng chưa chính xác!
+                          </p>
+                          <p style={{ margin: "0", color: "#777486" }}>
+                            Đang chuẩn bị chuyển lượt…
+                          </p>
+                        </>
+                      ) : (
+                        <p style={{ margin: "0" }}>
+                          {currentGuesserTeam
+                            ? `Đội ${currentGuesserTeam.name} đang tiến hành nhận diện nhà kinh tế học bí ẩn…`
+                            : "Các đội trong hàng đợi đang tiến hành gửi câu trả lời…"}
+                        </p>
+                      )}
+                    </div>
+                    <span className="vintage-status-tag">
+                      {state.lastGuessResult && !state.lastGuessResult.isCorrect ? "DỰ ĐOÁN SAI" : "VÒNG ĐIỀU TRA"}
+                    </span>
                   </div>
                 )}
               </div>
@@ -291,7 +332,9 @@ export function GamePanel({ state, self, adminMode, actions }) {
                 : state.phase === "ANSWER_RESULT"
                   ? state.lastResult?.isCorrect
                     ? "Đội hiện tại có thể chọn Dự đoán ngay hoặc Lưu lượt đoán cho vòng sau."
-                    : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
+                    : hasTokens
+                      ? "Trả lời chưa chính xác: Bạn vẫn có thể dùng lượt đoán đã tích lũy bên dưới!"
+                      : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
                   : state.phase === "GUESS_PHASE"
                     ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
                     : state.phase === "SELECT_NEXT_TEAM"
@@ -311,7 +354,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
         </div>
 
         <div className="puzzle-guess-actions">
-          {state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect && isActive && hasTokens ? (
+          {state.phase === "ANSWER_RESULT" && isActive && hasTokens ? (
             <>
               <button
                 type="button"
@@ -344,7 +387,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
                 !hasTokens
                   ? "Bạn chưa có lượt dự đoán"
                   : !canRequestGuess
-                    ? "Chỉ đăng ký dự đoán sau khi trả lời đúng"
+                    ? "Hiện không mở đăng ký dự đoán"
                     : "Nhấn để yêu cầu dự đoán"
               }
             >
@@ -358,18 +401,21 @@ export function GamePanel({ state, self, adminMode, actions }) {
   );
 }
 
-function FinalMysteryContent({ state, self, actions }) {
+function FinalMysteryContent({ state, self, adminMode, actions }) {
   const fm = state.finalMystery;
   const isRegistration = fm?.subphase === "REGISTRATION";
-  const isRegistered = fm?.registeredTeamIds?.includes(self?.id);
-  const hasAnswered = fm?.answeredTeamIds?.includes(self?.id);
+  const activeTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
+  const effectiveTeam = self || (adminMode ? activeTeam : null);
+  const isRegistered = fm?.registeredTeamIds?.includes(effectiveTeam?.id);
+  const hasAnswered = fm?.answeredTeamIds?.includes(effectiveTeam?.id);
+  const tokens = state.teams.find((t) => t.id === effectiveTeam?.id)?.guessTokens ?? effectiveTeam?.guessTokens ?? 0;
 
   return (
     <div className="final-right-content">
       <span className="final-right-phase">
         {isRegistration
-          ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 20} GIÂY`
-          : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 15} GIÂY`}
+          ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 30} GIÂY`
+          : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
       </span>
 
       <div className="final-right-notice">
@@ -388,32 +434,99 @@ function FinalMysteryContent({ state, self, actions }) {
 
       {isRegistration ? (
         <div className="final-right-registration">
-          {isRegistered ? (
+          {adminMode ? (
+            /* ADMIN VIEW: ONLY SHOW REGISTRATION QUEUE IN CHRONOLOGICAL ORDER */
+            <div className="final-admin-registration-box">
+              <div className="final-queue-header">
+                <strong>HÀNG ĐỢI ĐĂNG KÝ THEO THỨ TỰ</strong>
+                <span>{fm?.registeredTeamIds?.length || 0} ĐỘI</span>
+              </div>
+              {fm?.registeredTeamIds?.length > 0 ? (
+                <ol className="final-registration-list">
+                  {fm.registeredTeamIds.map((id, index) => {
+                    const t = state.teams.find((team) => team.id === id);
+                    return (
+                      <li key={id} className="final-registration-item">
+                        <span className="order-badge">#{index + 1}</span>
+                        <span className="team-name">{t?.name || id}</span>
+                        <span className="status-badge">ĐÃ XẾP HÀNG</span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <div className="final-queue-empty">
+                  ⏳ Đang chờ các đội bấm đăng ký trên thiết bị của họ…
+                </div>
+              )}
+            </div>
+          ) : isRegistered ? (
             <div className="final-right-registered">
               <span>✓ Đội bạn đã đăng ký trả lời.</span>
-              <button type="button" onClick={actions.cancelGuess}>Hủy đăng ký</button>
+              <button type="button" onClick={() => actions.cancelGuess(effectiveTeam?.id)}>Hủy đăng ký</button>
             </div>
-          ) : (self?.guessTokens || 0) > 0 ? (
-            <button type="button" className="final-register-button" onClick={actions.registerFinalMystery}>
+          ) : tokens > 0 ? (
+            <button
+              type="button"
+              className="final-register-button"
+              onClick={() => actions.registerFinalMystery(effectiveTeam?.id)}
+            >
               Đăng ký trả lời — dùng 1 lượt <span>→</span>
             </button>
           ) : (
-            <div className="final-right-unavailable">Đội bạn không còn lượt dự đoán để đăng ký.</div>
+            <div className="final-right-unavailable">
+              Đội bạn không còn lượt dự đoán để đăng ký.
+            </div>
           )}
-          <p className="final-right-queue">
-            Đã đăng ký: {fm?.registeredTeamIds?.map((id) => state.teams.find((team) => team.id === id)?.name).filter(Boolean).join(", ") || "Chưa có đội nào"}
-          </p>
+          {!adminMode && (
+            <p className="final-right-queue">
+              Đã đăng ký: {fm?.registeredTeamIds?.map((id) => state.teams.find((team) => team.id === id)?.name).filter(Boolean).join(", ") || "Chưa có đội nào"}
+            </p>
+          )}
         </div>
       ) : (
         <div className="final-right-answering">
-          {hasAnswered ? (
+          {adminMode ? (
+            /* ADMIN VIEW IN ANSWERING: SHOW ANSWERS PROGRESS IN QUEUE ORDER */
+            <div className="final-admin-answering-view">
+              <div className="final-queue-header">
+                <strong>TIẾN ĐỘ TRẢ LỜI CÂU HỎI</strong>
+                <span>{fm?.answeredTeamIds?.length || 0} / {fm?.registeredTeamIds?.length || 0} ĐÃ GỬI</span>
+              </div>
+              {fm?.registeredTeamIds?.length > 0 ? (
+                <ol className="final-registration-list">
+                  {fm.registeredTeamIds.map((id, index) => {
+                    const t = state.teams.find((team) => team.id === id);
+                    const answered = fm.answeredTeamIds?.includes(id);
+                    return (
+                      <li key={id} className="final-registration-item">
+                        <span className="order-badge">#{index + 1}</span>
+                        <span className="team-name">{t?.name || id}</span>
+                        <span className={`status-badge ${answered ? "answered" : "waiting"}`}>
+                          {answered ? "✓ ĐÃ GỬI ĐÁP ÁN" : "⏳ ĐANG CHỌN…"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <div className="final-queue-empty">
+                  Không có đội nào đăng ký tham gia vòng này.
+                </div>
+              )}
+            </div>
+          ) : hasAnswered ? (
             <div className="final-right-unavailable">Đội bạn đã trả lời và không thể chọn lại.</div>
           ) : !isRegistered ? (
             <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
           ) : (
             <div className="final-right-options">
               {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
-                <button key={option} type="button" onClick={() => actions.answer(index)}>
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => actions.answer(index, effectiveTeam?.id)}
+                >
                   <span>{String.fromCharCode(65 + index)}</span>{option}
                 </button>
               ))}

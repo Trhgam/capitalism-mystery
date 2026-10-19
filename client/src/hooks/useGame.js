@@ -61,9 +61,9 @@ export function useGame({ adminMode }) {
       // Sync team's live data (guessTokens, etc.) from every broadcast
       setTeam((prev) => {
         if (!prev) return prev;
-        const live = nextState.teams?.find((t) => t.id === prev.id);
+        const live = nextState.teams?.find((t) => t.id === prev.id || (prev.name && t.name.toLowerCase() === prev.name.toLowerCase()));
         if (!live) return prev;
-        return { ...prev, guessTokens: live.guessTokens, isConnected: live.isConnected };
+        return { ...prev, id: live.id, name: live.name, guessTokens: live.guessTokens, isConnected: live.isConnected };
       });
     };
     socket.on("connect", onConnect);
@@ -89,18 +89,18 @@ export function useGame({ adminMode }) {
       setAdminAuthenticated(true);
     },
     start: () => run("game:start"),
-    selectQuestion: () => run("question:select"),
-    answer: (optionIndex) => run("question:answer", { optionIndex }),
-    requestGuess: () => run("guess:request"),
-    cancelGuess: () => run("guess:cancel"),
-    saveGuess: () => run("guess:save"),
-    submitGuess: (answer) => run("guess:submit", { answer }),
+    selectQuestion: (teamId) => run("question:select", { teamId }),
+    answer: (optionIndex, teamId) => run("question:answer", { optionIndex, teamId }),
+    requestGuess: (teamId) => run("guess:request", { teamId }),
+    cancelGuess: (teamId) => run("guess:cancel", { teamId }),
+    saveGuess: (teamId) => run("guess:save", { teamId }),
+    submitGuess: (answer, teamId) => run("guess:submit", { answer, teamId }),
     selectNext: (teamId) => run("turn:select-next", { teamId }),
     pause: () => run("game:pause"),
     resume: () => run("game:resume"),
     reset: () => run("game:reset"),
     startFinalMystery: () => run("game:start-final-mystery"),
-    registerFinalMystery: () => run("final:register"),
+    registerFinalMystery: (teamId) => run("final:register", { teamId }),
     revealMystery: () => run("game:reveal-mystery"),
   }), [run]);
 

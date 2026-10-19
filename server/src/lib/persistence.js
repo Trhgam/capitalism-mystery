@@ -8,6 +8,7 @@ const databasePath = resolve(here, "../../data/game.sqlite");
 mkdirSync(dirname(databasePath), { recursive: true });
 
 const db = new DatabaseSync(databasePath);
+db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;");
 db.exec(`
   CREATE TABLE IF NOT EXISTS app_state (
     key TEXT PRIMARY KEY,
