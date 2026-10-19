@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GameService, PHASES, normalizeGuess } from "../src/game/GameService.js";
 import { questions } from "../src/data/questions.js";
 
-const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20 };
+const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20, finalRegistrationSeconds: 20, finalAnswerSeconds: 15 };
 const makeGame = () => new GameService({ config });
 
 describe("GameService", () => {
@@ -266,6 +266,9 @@ describe("GameService", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
+    const offline = game.joinTeam("Team 3").team;
+    game.getTeam(offline.id).guessTokens = 5;
+    game.disconnectTeam(offline.id);
     // Mark 11 pieces as locked
     for (let i = 0; i < 11; i++) {
       game.state.puzzle[i].status = "locked";
@@ -283,6 +286,11 @@ describe("GameService", () => {
     expect(game.getTeam(first.id).guessTokens).toBe(1);
     expect(game.getTeam(second.id).guessTokens).toBe(1);
     expect(game.getTeam(first.id).grantedFinalChance).toBe(true);
+    expect(game.getTeam(second.id).grantedFinalChance).toBe(true);
+    expect(game.getTeam(offline.id).guessTokens).toBe(5);
+    expect(game.getTeam(offline.id).grantedFinalChance).toBe(false);
+    expect(game.state.finalMystery.grantedFreeToken).toBe(true);
+    expect(game.state.deadline - Date.now()).toBeGreaterThan(19000);
 
     // Second team registers in 10s window
     game.registerFinalMystery(second.id);

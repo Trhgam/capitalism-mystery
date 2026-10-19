@@ -13,5 +13,7 @@ export const config = {
   guessRegistrationSeconds: numberFromEnv("GUESS_REGISTRATION_SECONDS", 12),
   guessSeconds: numberFromEnv("GUESS_SECONDS", 10),
   finalGuessSeconds: numberFromEnv("FINAL_GUESS_SECONDS", 20),
+  finalRegistrationSeconds: numberFromEnv("FINAL_REGISTRATION_SECONDS", 20),
+  finalAnswerSeconds: numberFromEnv("FINAL_ANSWER_SECONDS", 15),
   finalClueSeconds: numberFromEnv("FINAL_CLUE_SECONDS", 30),
 };

@@ -325,29 +325,35 @@ export class GameService extends EventEmitter {
     this.state.currentQuestionId = FINAL_MYSTERY_QUESTION.id;
     this.state.guessQueue = [];
 
-    // Kiểm tra Guess Token:
-    const anyHasTokens = this.state.teams.some((t) => t.guessTokens > 0);
+    // Only teams that are actually playing participate in the Final round.
+    // Tokens left on disconnected teams must not prevent the free final chance.
+    const activeTeams = this.state.teams.filter((team) => team.isConnected);
+    const anyHasTokens = activeTeams.some((team) => team.guessTokens > 0);
     if (!anyHasTokens) {
-      // CHỈ KHI TẤT CẢ các đội đều không còn token nào (0 token): cấp mỗi đội 1 token miễn phí
-      this.state.teams.forEach((t) => {
-        t.guessTokens = 1;
-        t.grantedFinalChance = true;
+      // If every active team is at zero, give every active team one chance.
+      activeTeams.forEach((team) => {
+        team.guessTokens = 1;
+        team.grantedFinalChance = true;
       });
     } else {
-      // ĐÃ CÓ ĐỘI CÒN TOKEN: Giữ nguyên số token thực tế, TUYỆT ĐỐI không cấp thêm cho bất kỳ ai!
-      this.state.teams.forEach((t) => {
-        t.grantedFinalChance = false;
-      });
+      activeTeams.forEach((team) => { team.grantedFinalChance = false; });
     }
+    this.state.teams
+      .filter((team) => !team.isConnected)
+      .forEach((team) => { team.grantedFinalChance = false; });
 
-    // Đăng ký (10 giây):
+    const registrationSeconds = this.config.finalRegistrationSeconds || 20;
+    const answerSeconds = this.config.finalAnswerSeconds || 15;
     this.state.finalMystery = {
       subphase: "REGISTRATION",
       registeredTeamIds: [],
       answeredTeamIds: [],
+      grantedFreeToken: !anyHasTokens,
+      registrationSeconds,
+      answerSeconds,
     };
-    this.state.deadline = Date.now() + 10 * 1000;
-    this.commit("final-mystery.start");
+    this.state.deadline = Date.now() + registrationSeconds * 1000;
+    this.commit("final-mystery.start", null, { grantedFreeToken: !anyHasTokens, activeTeamCount: activeTeams.length });
   }
 
   registerFinalMystery(teamId) {
@@ -358,6 +364,7 @@ export class GameService extends EventEmitter {
     if (team.guessTokens < 1) {
       throw new Error("Đội không có Guess Token để đăng ký.");
     }
+    if (!team.isConnected) throw new Error("Đội đang mất kết nối.");
     if (this.state.finalMystery.registeredTeamIds.includes(teamId)) {
       throw new Error("Đội đã đăng ký.");
     }
@@ -376,9 +383,9 @@ export class GameService extends EventEmitter {
     if (this.state.finalMystery.registeredTeamIds.length === 0) {
       return this.finishWithNoWinner();
     }
-    // Trả lời (15 giây)
+    // Answering begins only after the longer registration/announcement window.
     this.state.finalMystery.subphase = "ANSWERING";
-    this.state.deadline = Date.now() + 15 * 1000;
+    this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
     this.commit("final-mystery.answering");
   }
 

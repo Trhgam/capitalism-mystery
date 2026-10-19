@@ -55,8 +55,8 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                   <div>
                     <span className="fm-phase-badge">
                       {isRegPhase
-                        ? "GIAI ĐOẠN 1: ĐĂNG KÝ VÀO QUEUE (10 GIÂY)"
-                        : "GIAI ĐOẠN 2: TRẢ LỜI CÂU HỎI (15 GIÂY)"}
+                        ? `GIAI ĐOẠN 1: ĐỌC THÔNG BÁO & ĐĂNG KÝ (${fm?.registrationSeconds || 20} GIÂY)`
+                        : `GIAI ĐOẠN 2: TRẢ LỜI CÂU HỎI (${fm?.answerSeconds || 15} GIÂY)`}
                     </span>
                     <h2 className="fm-title">VÒNG GỢI Ý QUYẾT ĐỊNH</h2>
                   </div>
@@ -73,7 +73,9 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                       12 CÂU HỎI ĐÃ HOÀN TẤT – CHƯA CÓ ĐỘI NÀO ĐOÁN ĐƯỢC NHÂN VẬT!
                     </strong>
                     <p className="fm-reason-sub">
-                      Bức tranh tạm thời được che lại. Các đội có lượt dự đoán đăng ký tham gia giải mã câu hỏi tối hậu để tìm ra nhà vô địch.
+                      {fm?.grantedFreeToken
+                        ? "Tất cả đội đang chơi đều đã hết lượt dự đoán, vì vậy mỗi đội được cấp thêm 1 lượt miễn phí. Hãy đọc gợi ý và đăng ký tham gia vòng cuối."
+                        : "Bức tranh tạm thời được che lại. Các đội có lượt dự đoán đăng ký tham gia giải mã câu hỏi tối hậu để tìm ra nhà vô địch."}
                     </p>
                   </div>
                 </div>
@@ -90,7 +92,7 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                   <div className="fm-reg-block">
                     {isRegistered ? (
                       <div className="fm-reg-banner success">
-                        ✓ Đội bạn đã vào Queue dự đoán thành công! Chuẩn bị trả lời khi hết 10 giây.
+                        ✓ Đội bạn đã vào Queue dự đoán thành công! Chuẩn bị trả lời khi thời gian đăng ký kết thúc.
                       </div>
                     ) : (self?.guessTokens || 0) > 0 ? (
                       <div className="fm-reg-action-row">
