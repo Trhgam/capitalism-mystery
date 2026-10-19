@@ -159,10 +159,10 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                         autoFocus
                         className="guess-input"
                       />
-                      <button type="submit" className="quiz-primary-btn">
+                      <button type="submit" className="quiz-primary-btn" disabled={!guess.trim()}>
                         Gửi dự đoán <span>→</span>
                       </button>
-                      <button type="button" className="quiz-cancel-btn" onClick={actions.cancelGuess}>
+                      <button type="button" className="quiz-cancel-btn" onClick={() => actions.cancelGuess()}>
                         Hủy
                       </button>
                     </form>
@@ -171,46 +171,52 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                     </p>
                   </div>
                 ) : queueItem?.status === "incorrect" ? (
-                  <div className="vintage-status-card">
-                    <div className="vintage-seal incorrect">
-                      <span>✕</span>
+                  <div className="vintage-result-wrapper">
+                    <div className="vintage-status-card">
+                      <div className="vintage-seal incorrect">
+                        <span>✕</span>
+                      </div>
+                      <h3 className="vintage-status-title">Dự đoán chưa chính xác</h3>
+                      <div className="vintage-divider">✦ ❖ ✦</div>
+                      <div className="vintage-status-text">
+                        {state.lastGuessResult?.answer && (
+                          <p style={{ margin: "0 0 6px", fontSize: "14px", color: "#8b3939" }}>
+                            Bạn đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
+                          </p>
+                        )}
+                        <p style={{ margin: "0 0 6px" }}>
+                          Rất tiếc! Đây chưa phải là nhân vật bí ẩn (-1 lượt đoán).
+                        </p>
+                        {hasTokens ? (
+                          <p style={{ margin: "0", color: "#5a5343" }}>
+                            Đội bạn vẫn còn <strong>{self?.guessTokens} lượt dự đoán</strong>. Hãy bấm nút bên dưới để tiếp tục!
+                          </p>
+                        ) : (
+                          <p style={{ margin: "0", color: "#777486" }}>
+                            Đội bạn đã hết lượt dự đoán. Đang chuẩn bị chuyển sang chọn đội tiếp theo…
+                          </p>
+                        )}
+                      </div>
+                      <span className="vintage-status-tag">
+                        {hasTokens ? `CÒN ${self?.guessTokens} LƯỢT ĐOÁN` : "CHUYỂN SANG ĐỘI TIẾP THEO"}
+                      </span>
                     </div>
-                    <h3 className="vintage-status-title">Dự đoán chưa chính xác</h3>
-                    <div className="vintage-divider">✦ ❖ ✦</div>
-                    <div className="vintage-status-text">
-                      {state.lastGuessResult?.answer && (
-                        <p style={{ margin: "0 0 8px", fontSize: "14px", color: "#8b3939" }}>
-                          Bạn đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
-                        </p>
-                      )}
-                      <p style={{ margin: "0 0 6px" }}>
-                        Rất tiếc! Đây chưa phải là nhân vật bí ẩn (-1 lượt đoán).
-                      </p>
-                      {hasTokens ? (
-                        <p style={{ margin: "0", color: "#5a5343" }}>
-                          Đội bạn vẫn còn <strong>{self?.guessTokens} lượt dự đoán</strong>.
-                        </p>
-                      ) : (
-                        <p style={{ margin: "0", color: "#777486" }}>
-                          Đội bạn đã hết lượt dự đoán. Đang chuẩn bị chuyển sang chọn đội tiếp theo…
-                        </p>
-                      )}
-                    </div>
+
                     {hasTokens && (
-                      <div style={{ marginTop: "12px", display: "flex", justifyContent: "center" }}>
+                      <div className="vintage-retry-action-box">
+                        <div className="vintage-retry-info">
+                          <span className="retry-lightning">⚡</span>
+                          <span>Đội bạn còn <strong>{self?.guessTokens} lượt đoán</strong></span>
+                        </div>
                         <button
                           type="button"
-                          className="quiz-primary-btn"
-                          style={{ padding: "8px 16px", fontSize: "12px" }}
-                          onClick={actions.requestGuess}
+                          className="vintage-retry-btn"
+                          onClick={() => actions.requestGuess()}
                         >
                           Dự đoán tiếp ngay <span>→</span>
                         </button>
                       </div>
                     )}
-                    <span className="vintage-status-tag">
-                      {hasTokens ? `CÒN ${self?.guessTokens} LƯỢT ĐOÁN` : "CHUYỂN SANG ĐỘI TIẾP THEO"}
-                    </span>
                   </div>
                 ) : queueItem?.status === "waiting" ? (
                   <div className="vintage-status-card">
@@ -352,11 +358,23 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
       </section>
 
       {/* Action Banner directly below Question Card */}
-      {state.phase !== "FINAL_MYSTERY" && state.phase !== "FINAL_CLUE_PHASE" && (
+      {state.phase !== "FINAL_MYSTERY" && state.phase !== "FINAL_CLUE_PHASE" && !(queueItem?.status === "incorrect" && hasTokens) && (
         <div className="puzzle-guess-bar">
         <div className="puzzle-guess-text">
-          <strong>Đã nhận ra nhân vật?</strong>
-          <p>Dùng một lượt đoán hoặc giữ lại cho vòng sau.</p>
+          <strong>
+            {state.phase === "ANSWER_RESULT" && !state.lastResult?.isCorrect && hasTokens
+              ? "Bạn vẫn có thể dự đoán!"
+              : queueItem?.status === "incorrect" && hasTokens
+                ? "Vẫn còn lượt dự đoán!"
+                : "Đã nhận ra nhân vật?"}
+          </strong>
+          <p>
+            {state.phase === "ANSWER_RESULT" && !state.lastResult?.isCorrect && hasTokens
+              ? "Dùng lượt đoán đã tích lũy hoặc chờ hết giờ để chuyển sang đội tiếp theo."
+              : queueItem?.status === "incorrect" && hasTokens
+                ? "Đội bạn có thể dùng thêm 1 lượt để tiếp tục giải mã nhân vật."
+                : "Dùng một lượt đoán hoặc giữ lại cho vòng sau."}
+          </p>
         </div>
 
         <div className="puzzle-guess-actions">
@@ -365,29 +383,34 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
               <button
                 type="button"
                 className="puzzle-save-btn"
-                onClick={actions.saveGuess}
-                title="Giữ lượt dự đoán này để sử dụng trong các vòng sau"
+                onClick={() => actions.saveGuess()}
+                disabled={!state.lastResult?.isCorrect}
+                title={
+                  !state.lastResult?.isCorrect
+                    ? "Trả lời chưa chính xác nên không có lượt đoán mới để lưu"
+                    : "Giữ lượt dự đoán này để sử dụng trong các vòng sau"
+                }
               >
                 Lưu lượt đoán
               </button>
               <button
                 type="button"
                 className="puzzle-guess-btn"
-                onClick={actions.requestGuess}
+                onClick={() => actions.requestGuess()}
               >
                 Dự đoán ngay <span>→</span>
               </button>
             </>
           ) : isWaitingInQueue ? (
             <>
-              <button type="button" className="puzzle-save-btn" onClick={actions.cancelGuess}>Hủy đăng ký</button>
+              <button type="button" className="puzzle-save-btn" onClick={() => actions.cancelGuess()}>Hủy đăng ký</button>
               <button type="button" className="puzzle-guess-btn queued" disabled>✓ Đã vào hàng đợi</button>
             </>
           ) : (
             <button
               type="button"
-              className="puzzle-guess-btn"
-              onClick={actions.requestGuess}
+              className={`puzzle-guess-btn ${queueItem?.status === "incorrect" && hasTokens ? "retry" : ""}`}
+              onClick={() => actions.requestGuess()}
               disabled={!canRequestGuess}
               title={
                 !hasTokens

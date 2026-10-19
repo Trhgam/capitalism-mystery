@@ -309,6 +309,9 @@ export class GameService extends EventEmitter {
     if (this.state.phase !== PHASES.ANSWER_RESULT) {
       throw new Error("Chỉ có thể lưu lượt đoán trong lúc quyết định kết quả.");
     }
+    if (!this.state.lastResult?.isCorrect) {
+      throw new Error("Chỉ có thể lưu lượt đoán khi trả lời câu hỏi chính xác.");
+    }
     this.state.guessQueue = this.state.guessQueue.filter((item) => item.teamId !== teamId);
     this.commit("guess.save", teamId);
     if (teamId === this.state.currentTeamId) {
@@ -501,8 +504,9 @@ export class GameService extends EventEmitter {
       throw new Error("Chưa đến lượt dự đoán của đội bạn trong hàng đợi.");
     }
     if (team.guessTokens < 1) throw new Error("Đội không còn Guess Token.");
-    const answer = normalizeGuess(rawAnswer);
-    if (answer.length < 2 || answer.length > 60) throw new Error("Tên nhân vật không hợp lệ.");
+    const answer = normalizeGuess(rawAnswer || "");
+    if (!answer || answer.length === 0) throw new Error("Vui lòng nhập tên nhân vật dự đoán.");
+    if (answer.length > 60) throw new Error("Tên nhân vật quá dài (tối đa 60 ký tự).");
 
     team.guessTokens -= 1;
     const accepted = new Set(["adam smith", "smith", "a smith"]);

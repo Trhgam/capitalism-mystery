@@ -77,32 +77,35 @@ export function useGame({ adminMode }) {
     };
   }, [adminMode]);
 
-  const actions = useMemo(() => ({
-    async join(teamNumber) {
-      const response = await run("team:join", { teamNumber });
-      localStorage.setItem("capitalism-mystery-team-token", response.sessionToken);
-      setTeam(response.team);
-    },
-    async adminLogin(code) {
-      await run("admin:login", { code });
-      sessionStorage.setItem("capitalism-mystery-admin-code", code);
-      setAdminAuthenticated(true);
-    },
-    start: () => run("game:start"),
-    selectQuestion: (teamId) => run("question:select", { teamId }),
-    answer: (optionIndex, teamId) => run("question:answer", { optionIndex, teamId }),
-    requestGuess: (teamId) => run("guess:request", { teamId }),
-    cancelGuess: (teamId) => run("guess:cancel", { teamId }),
-    saveGuess: (teamId) => run("guess:save", { teamId }),
-    submitGuess: (answer, teamId) => run("guess:submit", { answer, teamId }),
-    selectNext: (teamId) => run("turn:select-next", { teamId }),
-    pause: () => run("game:pause"),
-    resume: () => run("game:resume"),
-    reset: () => run("game:reset"),
-    startFinalMystery: () => run("game:start-final-mystery"),
-    registerFinalMystery: (teamId) => run("final:register", { teamId }),
-    revealMystery: () => run("game:reveal-mystery"),
-  }), [run]);
+  const actions = useMemo(() => {
+    const cleanId = (id) => (typeof id === "string" ? id : undefined);
+    return {
+      async join(teamNumber) {
+        const response = await run("team:join", { teamNumber });
+        localStorage.setItem("capitalism-mystery-team-token", response.sessionToken);
+        setTeam(response.team);
+      },
+      async adminLogin(code) {
+        await run("admin:login", { code });
+        sessionStorage.setItem("capitalism-mystery-admin-code", code);
+        setAdminAuthenticated(true);
+      },
+      start: () => run("game:start"),
+      selectQuestion: (teamId) => run("question:select", { teamId: cleanId(teamId) }),
+      answer: (optionIndex, teamId) => run("question:answer", { optionIndex, teamId: cleanId(teamId) }),
+      requestGuess: (teamId) => run("guess:request", { teamId: cleanId(teamId) }),
+      cancelGuess: (teamId) => run("guess:cancel", { teamId: cleanId(teamId) }),
+      saveGuess: (teamId) => run("guess:save", { teamId: cleanId(teamId) }),
+      submitGuess: (answer, teamId) => run("guess:submit", { answer, teamId: cleanId(teamId) }),
+      selectNext: (teamId) => run("turn:select-next", { teamId: cleanId(teamId) }),
+      pause: () => run("game:pause"),
+      resume: () => run("game:resume"),
+      reset: () => run("game:reset"),
+      startFinalMystery: () => run("game:start-final-mystery"),
+      registerFinalMystery: (teamId) => run("final:register", { teamId: cleanId(teamId) }),
+      revealMystery: () => run("game:reveal-mystery"),
+    };
+  }, [run]);
 
   return { state, team, connected, error, setError, adminAuthenticated, actions };
 }

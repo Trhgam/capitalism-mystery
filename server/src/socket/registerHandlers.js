@@ -46,7 +46,8 @@ export function registerHandlers(io, socket, game, config) {
   }));
 
   const resolveActorTeamId = (payload) => {
-    const resolved = payload?.teamId || teamId || (isAdmin ? (game.state.currentTeamId || game.state.teams.find((t) => t.isConnected)?.id || game.state.teams[0]?.id) : null);
+    const candidateId = typeof payload?.teamId === "string" ? payload.teamId : null;
+    const resolved = candidateId || teamId || (isAdmin ? (game.state.currentTeamId || game.state.teams.find((t) => t.isConnected)?.id || game.state.teams[0]?.id) : null);
     if (!resolved) throw new Error("Cần tham gia đội trước.");
     return resolved;
   };

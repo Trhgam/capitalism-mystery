@@ -160,7 +160,8 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   min-height: 0;
   height: calc(100vh - 56px);
   max-height: calc(100vh - 56px);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   grid-template-columns: 210px minmax(460px, 1.4fr) minmax(320px, 1fr);
   gap: clamp(12px, 1.6vw, 24px);
@@ -573,7 +574,7 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .quiz-column-container {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -623,10 +624,18 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   white-space: nowrap;
 }
 
-.puzzle-save-btn:hover {
+.puzzle-save-btn:hover:not(:disabled) {
   background: #e8ded0;
   color: #282c3f;
   border-color: #baa993;
+}
+
+.puzzle-save-btn:disabled {
+  opacity: 0.45;
+  background: #f0e9dd;
+  color: #a89d8d;
+  border-color: #dfd5c7;
+  cursor: not-allowed;
 }
 
 .puzzle-guess-btn {
@@ -663,6 +672,22 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   color: white;
   cursor: default;
 }
+.puzzle-guess-btn.retry {
+  background: linear-gradient(135deg, #282c3f 0%, #3d425a 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  box-shadow: 0 4px 14px rgba(40, 44, 63, 0.16);
+  animation: pulse-retry 2s infinite ease-in-out;
+}
+.puzzle-guess-btn.retry:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e2130 0%, #2e3247 100%);
+  border-color: rgba(212, 175, 55, 0.8);
+  box-shadow: 0 6px 18px rgba(40, 44, 63, 0.25);
+  transform: translateY(-1px);
+}
+@keyframes pulse-retry {
+  0%, 100% { box-shadow: 0 4px 14px rgba(40, 44, 63, 0.16), 0 0 0 0 rgba(212, 175, 55, 0.4); }
+  50% { box-shadow: 0 4px 14px rgba(40, 44, 63, 0.2), 0 0 0 6px rgba(212, 175, 55, 0); }
+}
 .quiz-cancel-btn { padding: 10px 14px; border: 1px solid #c9bca9; border-radius: 9px; color: #6a5e4a; background: #f4ede2; font-weight: 700; }
 .quiz-cancel-btn:hover { color: #fff; background: #8b4a45; border-color: #8b4a45; }
 
@@ -671,19 +696,17 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   background: #ffffff;
   border: 1px solid rgba(61, 61, 87, 0.1);
   border-radius: 20px;
-  padding: 24px 22px 20px;
+  padding: 18px 20px 16px;
   box-shadow: 0 10px 30px rgba(61, 51, 38, 0.04);
   display: flex;
   flex-direction: column;
 }
 
-
-
 .quiz-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   flex-shrink: 0;
 }
 
@@ -937,14 +960,24 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 /* Vintage Guess Phase Card & States */
+.vintage-result-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 440px;
+  margin: 6px auto 0;
+  gap: 10px;
+}
+
 .vintage-status-card {
   width: 100%;
   max-width: 440px;
-  margin: 12px auto 0;
+  margin: 6px auto 0;
   background: #fdfaf3;
   border: 1px solid rgba(158, 141, 105, 0.35);
   border-radius: 16px;
-  padding: 24px 22px 20px;
+  padding: 16px 20px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -953,13 +986,13 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 .vintage-seal {
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 22px;
-  margin-bottom: 12px;
+  font-size: 18px;
+  margin-bottom: 8px;
   border: 2px solid;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
@@ -983,9 +1016,9 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 .vintage-status-title {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-family: "Playfair Display", Georgia, serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #282c3f;
   letter-spacing: -0.01em;
@@ -995,10 +1028,10 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   color: #baa98f;
-  font-size: 11px;
-  margin: 6px 0 12px;
+  font-size: 10px;
+  margin: 4px 0 8px;
   width: 100%;
 }
 
@@ -1011,11 +1044,63 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 .vintage-status-text {
-  margin: 0 0 14px;
+  margin: 0 0 10px;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #6a6356;
   max-width: 380px;
+}
+
+.vintage-retry-action-box {
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid #d4af37;
+  border-radius: 14px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.15);
+  animation: pulse-retry 2.5s infinite ease-in-out;
+  box-sizing: border-box;
+}
+
+.vintage-retry-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #282c3f;
+}
+
+.vintage-retry-info .retry-lightning {
+  font-size: 16px;
+  color: #d4af37;
+}
+
+.vintage-retry-btn {
+  background: #282c3f;
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.vintage-retry-btn:hover {
+  background: #191b26;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 44, 63, 0.25);
 }
 
 .vintage-status-tag {

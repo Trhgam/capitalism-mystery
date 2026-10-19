@@ -177,6 +177,19 @@ describe("GameService", () => {
     expect(() => game.selectNextTeam(second.id, first.id)).toThrow("chưa đến lượt");
   });
 
+  it("disallows saveGuess when question was answered incorrectly", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    game.getTeam(first.id).guessTokens = 2;
+    game.start();
+    const source = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(first.id, (source.correctAnswer + 1) % 4);
+
+    expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
+    expect(game.state.lastResult.isCorrect).toBe(false);
+    expect(() => game.saveGuess(first.id)).toThrow("Chỉ có thể lưu lượt đoán khi trả lời câu hỏi chính xác.");
+  });
+
   it("advances queue immediately after an incorrect character guess", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
@@ -403,6 +416,27 @@ describe("GameService", () => {
     expect(result.isCorrect).toBe(true);
     expect(game.state.phase).toBe(PHASES.FINISHED);
     expect(game.state.winner.teamName).toBe("Team 2");
+  });
+
+  it("evaluates single-character guesses normally and only rejects empty inputs", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    game.getTeam(first.id).guessTokens = 2;
+    game.start();
+    const source = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(first.id, source.correctAnswer);
+    game.requestGuess(first.id);
+    game.advanceAfterAnswerResult();
+
+    // Empty guess or whitespace should be rejected
+    expect(() => game.submitGuess(first.id, "")).toThrow("Vui lòng nhập tên nhân vật dự đoán.");
+    expect(() => game.submitGuess(first.id, "   ")).toThrow("Vui lòng nhập tên nhân vật dự đoán.");
+
+    // Single character guess e.g. "g" must NOT throw an error; it should be evaluated as an incorrect guess!
+    const result = game.submitGuess(first.id, "g");
+    expect(result.isCorrect).toBe(false);
+    expect(game.getTeam(first.id).guessTokens).toBe(2); // Started with 2 + 1 (correct answer) = 3; after guess = 2
+    expect(game.state.lastGuessResult.answer).toBe("g");
   });
 });
 
