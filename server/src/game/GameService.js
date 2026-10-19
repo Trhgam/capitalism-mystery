@@ -377,6 +377,8 @@ export class GameService extends EventEmitter {
       subphase: "REGISTRATION",
       registeredTeamIds: [],
       answeredTeamIds: [],
+      currentTeamId: null,
+      lastAttempt: null,
       grantedFreeToken: !anyHasTokens,
       registrationSeconds,
       answerSeconds,
@@ -414,8 +416,40 @@ export class GameService extends EventEmitter {
     }
     // Answering begins only after the longer registration/announcement window.
     this.state.finalMystery.subphase = "ANSWERING";
+    this.state.finalMystery.currentTeamId = this.nextFinalMysteryTeamId();
     this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
-    this.commit("final-mystery.answering");
+    this.commit("final-mystery.answering", this.state.finalMystery.currentTeamId);
+  }
+
+  nextFinalMysteryTeamId() {
+    return this.state.finalMystery.registeredTeamIds.find((id) => {
+      const team = this.getTeam(id);
+      return team?.isConnected && team.guessTokens > 0 && !this.state.finalMystery.answeredTeamIds.includes(id);
+    }) || null;
+  }
+
+  advanceFinalMysteryTurn() {
+    const nextTeamId = this.nextFinalMysteryTeamId();
+    if (!nextTeamId) return this.finishWithNoWinner();
+    this.state.finalMystery.currentTeamId = nextTeamId;
+    this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
+    this.commit("final-mystery.next-team", nextTeamId);
+  }
+
+  timeoutFinalMysteryTurn() {
+    const teamId = this.state.finalMystery?.currentTeamId;
+    const team = this.getTeam(teamId);
+    if (!team) return this.advanceFinalMysteryTurn();
+
+    team.guessTokens = Math.max(0, team.guessTokens - 1);
+    this.state.finalMystery.lastAttempt = { teamId, optionIndex: null, isCorrect: false, timedOut: true, attemptedAt: new Date().toISOString() };
+    if (team.guessTokens === 0 && !this.state.finalMystery.answeredTeamIds.includes(teamId)) {
+      this.state.finalMystery.answeredTeamIds.push(teamId);
+      const queueItem = this.state.guessQueue.find((item) => item.teamId === teamId);
+      if (queueItem) queueItem.status = "exhausted";
+    }
+    this.commit("final-mystery.timeout", teamId, { remainingTokens: team.guessTokens });
+    this.advanceFinalMysteryTurn();
   }
 
   finishWithNoWinner() {
@@ -444,15 +478,15 @@ export class GameService extends EventEmitter {
     if (!this.state.finalMystery.registeredTeamIds.includes(teamId)) {
       throw new Error("Chỉ đội đã đăng ký mới được trả lời.");
     }
-    if (this.state.finalMystery.answeredTeamIds.includes(teamId)) {
-      throw new Error("Mỗi đội chỉ được đoán tối đa 1 lần trong Final Mystery.");
-    }
+    if (this.state.finalMystery.currentTeamId !== teamId) throw new Error("Chưa đến lượt trả lời của đội bạn.");
+    if (team.guessTokens < 1) throw new Error("Đội không còn lượt dự đoán.");
     if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) {
       throw new Error("Đáp án không hợp lệ.");
     }
 
-    this.state.finalMystery.answeredTeamIds.push(teamId);
     const isCorrect = optionIndex === FINAL_MYSTERY_QUESTION.correctAnswer;
+    team.guessTokens -= 1;
+    this.state.finalMystery.lastAttempt = { teamId, optionIndex, isCorrect, attemptedAt: new Date().toISOString() };
 
     if (isCorrect) {
       // Đoán đúng đầu tiên -> Chiến thắng!
@@ -469,19 +503,17 @@ export class GameService extends EventEmitter {
       return { isCorrect: true, winner: this.state.winner };
     }
 
-    // Đoán sai -> Mất 1 token, không được đoán lại trong vòng cuối
-    team.guessTokens = Math.max(0, team.guessTokens - 1);
+    // Sai: đội hiện tại dùng tiếp các lượt còn lại trước khi chuyển đội kế tiếp.
     const queueItem = this.state.guessQueue.find((item) => item.teamId === teamId);
-    if (queueItem) queueItem.status = "incorrect";
-
-    this.commit("final-mystery.incorrect", teamId, { optionIndex });
-
-    // Kiểm tra nếu tất cả các đội đã đăng ký đều đã đoán sai:
-    const allAnswered = this.state.finalMystery.registeredTeamIds.every((id) =>
-      this.state.finalMystery.answeredTeamIds.includes(id)
-    );
-    if (allAnswered) {
-      this.finishWithNoWinner();
+    if (team.guessTokens > 0) {
+      if (queueItem) queueItem.status = "waiting";
+      this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
+      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: team.guessTokens, continues: true });
+    } else {
+      if (!this.state.finalMystery.answeredTeamIds.includes(teamId)) this.state.finalMystery.answeredTeamIds.push(teamId);
+      if (queueItem) queueItem.status = "exhausted";
+      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: 0, continues: false });
+      this.advanceFinalMysteryTurn();
     }
     return { isCorrect: false };
   }
@@ -610,7 +642,7 @@ export class GameService extends EventEmitter {
       if (this.state.finalMystery?.subphase === "REGISTRATION") {
         this.advanceFinalMysteryToAnswering();
       } else if (this.state.finalMystery?.subphase === "ANSWERING") {
-        this.finishWithNoWinner();
+        this.timeoutFinalMysteryTurn();
       }
     }
   }

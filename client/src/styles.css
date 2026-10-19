@@ -2230,3 +2230,23 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .final-admin-action-btn {
   width: 100%;
 }
+
+/* Sequential Final Mystery queue shown in the right panel. */
+.final-right-content { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 230px); overflow-y: auto; padding-right: 3px; text-align: left; }
+.final-right-phase { width: fit-content; padding: 5px 9px; border-radius: 999px; color: #7b653e; background: #efe4ce; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+.final-right-question { padding: 13px 14px; border: 1px solid rgba(61,61,87,.16); border-radius: 10px; background: #fffdf8; }
+.final-right-question > span { color: #9e8d69; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.final-right-question p { margin: 7px 0 0; color: #282c3f; font: italic 600 13px/1.5 "Playfair Display", Georgia, serif; }
+.final-right-registration, .final-right-answering { display: flex; flex-direction: column; gap: 10px; }
+.final-right-unavailable { padding: 10px 12px; border-radius: 8px; color: #8b3939; background: #f9ecea; font-size: 11px; }
+.final-right-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.final-right-options button { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 10px; border: 1px solid rgba(61,61,87,.18); border-radius: 9px; color: #282c3f; background: #fffdf8; font-size: 11px; font-weight: 700; text-align: left; }
+.final-right-options button:hover { border-color: #9e8d69; background: #faf4e8; }
+.final-right-options button > span { width: 24px; height: 24px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid #c8b991; border-radius: 50%; color: #8f7040; }
+.final-turn-banner { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border: 1px solid #c8b991; border-radius: 9px; color: #282c3f; background: #faf4e8; }
+.final-turn-banner > span { color: #8f8060; font-size: 8px; font-weight: 700; letter-spacing: .1em; }
+.final-turn-banner b { font-size: 13px; }
+.final-turn-banner em { margin-left: auto; color: #8f7040; font-size: 10px; font-style: normal; font-weight: 700; }
+.final-attempt-failed { padding: 9px 11px; border-left: 3px solid #a84c4c; color: #7f3d38; background: #f9ecea; font-size: 10px; line-height: 1.45; }
+.final-answer-order { margin: 4px 0 0; padding: 0; }
+.final-registration-item.current { border-color: #c8b991; background: #faf4e8; }

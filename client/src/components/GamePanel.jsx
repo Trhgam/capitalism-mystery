@@ -460,7 +460,10 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
   const fm = state.finalMystery;
   const isRegistration = fm?.subphase === "REGISTRATION";
   const activeTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
-  const effectiveTeam = self || (adminMode ? activeTeam : null);
+  const currentFinalTeam = state.teams.find((item) => item.id === fm?.currentTeamId);
+  const effectiveTeam = isRegistration
+    ? (self || (adminMode ? activeTeam : null))
+    : (adminMode ? currentFinalTeam : self);
   const isRegistered = fm?.registeredTeamIds?.includes(effectiveTeam?.id);
   const hasAnswered = fm?.answeredTeamIds?.includes(effectiveTeam?.id);
   const tokens = state.teams.find((t) => t.id === effectiveTeam?.id)?.guessTokens ?? effectiveTeam?.guessTokens ?? 0;
@@ -488,6 +491,11 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
           ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 30} GIÂY`
           : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
       </span>
+
+      <div className="final-right-question">
+        <span>CÂU HỎI QUYẾT ĐỊNH</span>
+        <p>“Tôi là nhà kinh tế học người Scotland, được xem là một trong những người đặt nền móng cho kinh tế học hiện đại. Năm 1776, tôi xuất bản tác phẩm <b>‘Sự giàu có của các quốc gia’</b>. Tôi là ai?”</p>
+      </div>
 
 
       {isRegistration ? (
@@ -613,44 +621,49 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
         </div>
       ) : (
         <div className="final-right-answering">
-          {adminMode ? (
-            /* ADMIN VIEW IN ANSWERING: SHOW ANSWERS PROGRESS IN QUEUE ORDER */
-            <div className="final-admin-answering-view">
-              <div className="final-queue-header">
-                <strong>TIẾN ĐỘ TRẢ LỜI CÂU HỎI</strong>
-                <span>{fm?.answeredTeamIds?.length || 0} / {fm?.registeredTeamIds?.length || 0} ĐÃ GỬI</span>
-              </div>
-              {fm?.registeredTeamIds?.length > 0 ? (
-                <ol className="final-registration-list">
-                  {fm.registeredTeamIds.map((id, index) => {
-                    const t = state.teams.find((team) => team.id === id);
-                    const answered = fm.answeredTeamIds?.includes(id);
-                    return (
-                      <li key={id} className="final-registration-item">
-                        <span className="order-badge">#{index + 1}</span>
-                        <span className="team-name">{t?.name || id}</span>
-                        <span className={`status-badge ${answered ? "answered" : "waiting"}`}>
-                          {answered ? "✓ ĐÃ GỬI ĐÁP ÁN" : "⏳ ĐANG CHỌN…"}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : (
-                <div className="final-queue-empty">
-                  Không có đội nào đăng ký tham gia vòng này.
-                </div>
-              )}
-            </div>
-          ) : hasAnswered ? (
-            <div className="final-right-unavailable">Đội bạn đã trả lời và không thể chọn lại.</div>
-          ) : !isRegistered ? (
-            <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
-          ) : (
-            <div className="final-right-answering-prompt">
-              👉 Hãy chọn đáp án <b>A, B, C hoặc D</b> ở khung câu hỏi chính giữa màn hình!
+          <div className="final-turn-banner">
+            <span>ĐANG ĐẾN LƯỢT</span>
+            <b>{currentFinalTeam?.name || "Đang chuyển lượt…"}</b>
+            {currentFinalTeam && <em>⚡ {currentFinalTeam.guessTokens} lượt còn lại</em>}
+          </div>
+
+          {fm?.lastAttempt && !fm.lastAttempt.isCorrect && (
+            <div className="final-attempt-failed">
+              ✕ {state.teams.find((team) => team.id === fm.lastAttempt.teamId)?.name} vừa trả lời sai.
+              {fm.lastAttempt.teamId === fm.currentTeamId ? " Đội này vẫn còn lượt nên được đoán tiếp." : " Đang chuyển sang đội kế tiếp."}
             </div>
           )}
+
+          {!isRegistered ? (
+            <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
+          ) : effectiveTeam?.id !== fm?.currentTeamId ? (
+            <div className="final-right-unavailable">Chưa đến lượt đội bạn. Vui lòng chờ theo thứ tự đăng ký.</div>
+          ) : (
+            <div className="final-right-options">
+              {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
+                <button key={option} type="button" onClick={() => actions.answer(index, effectiveTeam?.id)}>
+                  <span>{String.fromCharCode(65 + index)}</span>{option}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <ol className="final-registration-list final-answer-order">
+            {fm?.registeredTeamIds?.map((id, index) => {
+              const team = state.teams.find((item) => item.id === id);
+              const exhausted = fm.answeredTeamIds?.includes(id);
+              const current = fm.currentTeamId === id;
+              return (
+                <li key={id} className={`final-registration-item ${current ? "current" : ""}`}>
+                  <span className="order-badge">#{index + 1}</span>
+                  <span className="team-name">{team?.name}</span>
+                  <span className={`status-badge ${exhausted ? "answered" : current ? "waiting" : ""}`}>
+                    {exhausted ? "HẾT LƯỢT" : current ? "ĐANG TRẢ LỜI" : `CÒN ${team?.guessTokens || 0} LƯỢT`}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       )}
     </div>

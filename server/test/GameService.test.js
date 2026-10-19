@@ -349,6 +349,39 @@ describe("GameService", () => {
     expect(game.state.puzzle.every((p) => p.status === "revealed")).toBe(true);
   });
 
+  it("runs Final Mystery in queue order and lets each team use every remaining token", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    const second = game.joinTeam("Team 2").team;
+    game.getTeam(first.id).guessTokens = 1;
+    game.getTeam(second.id).guessTokens = 2;
+
+    game.startFinalMystery();
+    expect(game.state.finalMystery.grantedFreeToken).toBe(false);
+    expect(game.getTeam(first.id).guessTokens).toBe(1);
+    expect(game.getTeam(second.id).guessTokens).toBe(2);
+
+    game.registerFinalMystery(first.id);
+    game.registerFinalMystery(second.id);
+    game.advanceFinalMysteryToAnswering();
+    expect(game.state.finalMystery.currentTeamId).toBe(first.id);
+    expect(() => game.answerFinalMystery(second.id, 1)).toThrow("Chưa đến lượt");
+
+    game.answerFinalMystery(first.id, 1);
+    expect(game.getTeam(first.id).guessTokens).toBe(0);
+    expect(game.state.phase).toBe(PHASES.FINAL_MYSTERY);
+    expect(game.state.finalMystery.currentTeamId).toBe(second.id);
+
+    game.answerFinalMystery(second.id, 1);
+    expect(game.getTeam(second.id).guessTokens).toBe(1);
+    expect(game.state.finalMystery.currentTeamId).toBe(second.id);
+
+    game.answerFinalMystery(second.id, 2);
+    expect(game.getTeam(second.id).guessTokens).toBe(0);
+    expect(game.state.phase).toBe(PHASES.FINISHED);
+    expect(game.state.winner).toBeNull();
+  });
+
   it("finishes with no winner after 5s countdown when 12 pieces are opened and nobody registers in FINAL_MYSTERY", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
