@@ -187,7 +187,8 @@ describe("GameService", () => {
 
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
     expect(game.state.lastResult.isCorrect).toBe(false);
-    expect(() => game.saveGuess(first.id)).toThrow("Chỉ có thể lưu lượt đoán khi trả lời câu hỏi chính xác.");
+    expect(() => game.saveGuess(first.id)).not.toThrow();
+    expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
   });
 
   it("advances queue immediately after an incorrect character guess", () => {

@@ -383,7 +383,10 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
               <button
                 type="button"
                 className="puzzle-save-btn"
-                onClick={() => actions.saveGuess()}
+                onClick={() => {
+                  if (!state.lastResult?.isCorrect) return;
+                  actions.saveGuess();
+                }}
                 disabled={!state.lastResult?.isCorrect}
                 title={
                   !state.lastResult?.isCorrect

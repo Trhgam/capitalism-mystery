@@ -310,7 +310,7 @@ export class GameService extends EventEmitter {
       throw new Error("Chỉ có thể lưu lượt đoán trong lúc quyết định kết quả.");
     }
     if (!this.state.lastResult?.isCorrect) {
-      throw new Error("Chỉ có thể lưu lượt đoán khi trả lời câu hỏi chính xác.");
+      return;
     }
     this.state.guessQueue = this.state.guessQueue.filter((item) => item.teamId !== teamId);
     this.commit("guess.save", teamId);
