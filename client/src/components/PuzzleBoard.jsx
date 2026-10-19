@@ -16,6 +16,8 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
   const hasAnswered = fm?.answeredTeamIds?.includes(self?.id);
   const isRegPhase = fm?.subphase === "REGISTRATION";
   const isAnsPhase = fm?.subphase === "ANSWERING";
+  const showingFeedback = Boolean(fm?.feedbackUntil && fm?.lastAttempt && !fm.lastAttempt.isCorrect);
+  const currentFinalTeam = state?.teams?.find((team) => team.id === fm?.currentTeamId);
 
   return (
     <section className="puzzle-section">
@@ -64,16 +66,21 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                   </p>
                 </div>
 
-                {/* 4 ABCD Options right in the center! */}
                 <div className="final-center-options-section">
                   {isAnsPhase ? (
+                    showingFeedback ? null :
                     adminMode ? (
                       <div className="final-center-grid">
                         {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
-                          <div key={option} className="final-center-btn admin-view">
+                          <button
+                            key={option}
+                            type="button"
+                            className="final-center-btn player-action"
+                            onClick={() => actions.answer(index, currentFinalTeam?.id)}
+                          >
                             <span className="opt-key">{String.fromCharCode(65 + index)}</span>
                             <span className="opt-text">{option}</span>
-                          </div>
+                          </button>
                         ))}
                       </div>
                     ) : hasAnswered ? (
@@ -100,7 +107,6 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                       </div>
                     )
                   ) : (
-                    /* During Registration Phase: show options in preview mode */
                     <div className="final-center-grid preview-mode">
                       {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
                         <div key={option} className="final-center-btn preview">

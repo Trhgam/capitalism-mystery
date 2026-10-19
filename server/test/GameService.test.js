@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GameService, PHASES, normalizeGuess } from "../src/game/GameService.js";
 import { questions } from "../src/data/questions.js";
 
-const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20, finalRegistrationSeconds: 20, finalAnswerSeconds: 15 };
+const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20, finalRegistrationSeconds: 20, finalAnswerSeconds: 15, finalFeedbackSeconds: 3 };
 const makeGame = () => new GameService({ config });
 
 describe("GameService", () => {
@@ -370,14 +370,30 @@ describe("GameService", () => {
     game.answerFinalMystery(first.id, 1);
     expect(game.getTeam(first.id).guessTokens).toBe(0);
     expect(game.state.phase).toBe(PHASES.FINAL_MYSTERY);
+    expect(game.state.finalMystery.currentTeamId).toBe(first.id);
+    expect(game.state.finalMystery.feedbackUntil).toBeGreaterThan(Date.now());
+    expect(() => game.answerFinalMystery(first.id, 2)).toThrow("Đang hiển thị kết quả");
+    game.completeFinalMysteryFeedback();
     expect(game.state.finalMystery.currentTeamId).toBe(second.id);
 
     game.answerFinalMystery(second.id, 1);
     expect(game.getTeam(second.id).guessTokens).toBe(1);
     expect(game.state.finalMystery.currentTeamId).toBe(second.id);
+    expect(game.state.finalMystery.lastAttempt).toMatchObject({
+      teamId: second.id,
+      teamName: "Team 2",
+      isCorrect: false,
+      remainingTokens: 1,
+      continues: true,
+    });
+    game.completeFinalMysteryFeedback();
+    expect(game.state.finalMystery.currentTeamId).toBe(second.id);
+    expect(game.state.finalMystery.feedbackUntil).toBeNull();
 
     game.answerFinalMystery(second.id, 2);
     expect(game.getTeam(second.id).guessTokens).toBe(0);
+    expect(game.state.phase).toBe(PHASES.FINAL_MYSTERY);
+    game.completeFinalMysteryFeedback();
     expect(game.state.phase).toBe(PHASES.FINISHED);
     expect(game.state.winner).toBeNull();
   });

@@ -15,8 +15,17 @@ export function createApp({ clientOrigin }) {
   const here = dirname(fileURLToPath(import.meta.url));
   const clientDist = resolve(here, "../../client/dist");
   if (existsSync(resolve(clientDist, "index.html"))) {
-    app.use(express.static(clientDist));
-    app.get("*", (_req, res) => res.sendFile(resolve(clientDist, "index.html")));
+    app.use(express.static(clientDist, {
+      setHeaders(res, filePath) {
+        if (filePath.endsWith("index.html")) {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+        }
+      },
+    }));
+    app.get("*", (_req, res) => {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.sendFile(resolve(clientDist, "index.html"));
+    });
   }
   return app;
 }

@@ -379,6 +379,7 @@ export class GameService extends EventEmitter {
       answeredTeamIds: [],
       currentTeamId: null,
       lastAttempt: null,
+      feedbackUntil: null,
       grantedFreeToken: !anyHasTokens,
       registrationSeconds,
       answerSeconds,
@@ -436,6 +437,21 @@ export class GameService extends EventEmitter {
     this.commit("final-mystery.next-team", nextTeamId);
   }
 
+  completeFinalMysteryFeedback() {
+    if (!this.state.finalMystery?.feedbackUntil) return;
+
+    const currentTeam = this.getTeam(this.state.finalMystery.currentTeamId);
+    this.state.finalMystery.feedbackUntil = null;
+
+    if (currentTeam?.isConnected && currentTeam.guessTokens > 0) {
+      this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
+      this.commit("final-mystery.retry", currentTeam.id, { remainingTokens: currentTeam.guessTokens });
+      return;
+    }
+
+    this.advanceFinalMysteryTurn();
+  }
+
   timeoutFinalMysteryTurn() {
     const teamId = this.state.finalMystery?.currentTeamId;
     const team = this.getTeam(teamId);
@@ -479,6 +495,7 @@ export class GameService extends EventEmitter {
       throw new Error("Chỉ đội đã đăng ký mới được trả lời.");
     }
     if (this.state.finalMystery.currentTeamId !== teamId) throw new Error("Chưa đến lượt trả lời của đội bạn.");
+    if (this.state.finalMystery.feedbackUntil) throw new Error("Đang hiển thị kết quả lượt vừa rồi.");
     if (team.guessTokens < 1) throw new Error("Đội không còn lượt dự đoán.");
     if (!Number.isInteger(optionIndex) || optionIndex < 0 || optionIndex > 3) {
       throw new Error("Đáp án không hợp lệ.");
@@ -486,7 +503,15 @@ export class GameService extends EventEmitter {
 
     const isCorrect = optionIndex === FINAL_MYSTERY_QUESTION.correctAnswer;
     team.guessTokens -= 1;
-    this.state.finalMystery.lastAttempt = { teamId, optionIndex, isCorrect, attemptedAt: new Date().toISOString() };
+    this.state.finalMystery.lastAttempt = {
+      teamId,
+      teamName: team.name,
+      optionIndex,
+      isCorrect,
+      remainingTokens: team.guessTokens,
+      continues: !isCorrect && team.guessTokens > 0,
+      attemptedAt: new Date().toISOString(),
+    };
 
     if (isCorrect) {
       // Đoán đúng đầu tiên -> Chiến thắng!
@@ -505,15 +530,16 @@ export class GameService extends EventEmitter {
 
     // Sai: đội hiện tại dùng tiếp các lượt còn lại trước khi chuyển đội kế tiếp.
     const queueItem = this.state.guessQueue.find((item) => item.teamId === teamId);
+    const feedbackSeconds = this.config.finalFeedbackSeconds || 3;
+    this.state.finalMystery.feedbackUntil = Date.now() + feedbackSeconds * 1000;
+    this.state.deadline = this.state.finalMystery.feedbackUntil;
     if (team.guessTokens > 0) {
       if (queueItem) queueItem.status = "waiting";
-      this.state.deadline = Date.now() + (this.state.finalMystery.answerSeconds || 15) * 1000;
-      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: team.guessTokens, continues: true });
+      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: team.guessTokens, continues: true, feedbackSeconds });
     } else {
       if (!this.state.finalMystery.answeredTeamIds.includes(teamId)) this.state.finalMystery.answeredTeamIds.push(teamId);
       if (queueItem) queueItem.status = "exhausted";
-      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: 0, continues: false });
-      this.advanceFinalMysteryTurn();
+      this.commit("final-mystery.incorrect", teamId, { optionIndex, remainingTokens: 0, continues: false, feedbackSeconds });
     }
     return { isCorrect: false };
   }
@@ -642,7 +668,8 @@ export class GameService extends EventEmitter {
       if (this.state.finalMystery?.subphase === "REGISTRATION") {
         this.advanceFinalMysteryToAnswering();
       } else if (this.state.finalMystery?.subphase === "ANSWERING") {
-        this.timeoutFinalMysteryTurn();
+        if (this.state.finalMystery.feedbackUntil) this.completeFinalMysteryFeedback();
+        else this.timeoutFinalMysteryTurn();
       }
     }
   }

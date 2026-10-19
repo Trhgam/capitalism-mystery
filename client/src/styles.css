@@ -2232,12 +2232,16 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 /* Sequential Final Mystery queue shown in the right panel. */
-.final-right-content { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 230px); overflow-y: auto; padding-right: 3px; text-align: left; }
+.quiz-card-panel:has(.final-right-content) { position: relative; overflow: visible; isolation: isolate; }
+.quiz-card-panel:has(.final-right-content) .quiz-card-header { position: relative; z-index: 1; }
+.quiz-card-panel:has(.final-right-content) .quiz-card-body { position: relative; z-index: 2; overflow: visible; }
+.final-right-content { position: relative; z-index: 20; display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 230px); overflow: visible; padding-right: 3px; text-align: left; }
+.final-right-content > .final-right-notice { position: relative; z-index: 50; overflow: visible; }
 .final-right-phase { width: fit-content; padding: 5px 9px; border-radius: 999px; color: #7b653e; background: #efe4ce; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
 .final-right-question { padding: 13px 14px; border: 1px solid rgba(61,61,87,.16); border-radius: 10px; background: #fffdf8; }
 .final-right-question > span { color: #9e8d69; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
 .final-right-question p { margin: 7px 0 0; color: #282c3f; font: italic 600 13px/1.5 "Playfair Display", Georgia, serif; }
-.final-right-registration, .final-right-answering { display: flex; flex-direction: column; gap: 10px; }
+.final-right-registration, .final-right-answering { display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow-y: auto; overflow-x: visible; }
 .final-right-unavailable { padding: 10px 12px; border-radius: 8px; color: #8b3939; background: #f9ecea; font-size: 11px; }
 .final-right-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .final-right-options button { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 8px 10px; border: 1px solid rgba(61,61,87,.18); border-radius: 9px; color: #282c3f; background: #fffdf8; font-size: 11px; font-weight: 700; text-align: left; }
@@ -2247,6 +2251,17 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .final-turn-banner > span { color: #8f8060; font-size: 8px; font-weight: 700; letter-spacing: .1em; }
 .final-turn-banner b { font-size: 13px; }
 .final-turn-banner em { margin-left: auto; color: #8f7040; font-size: 10px; font-style: normal; font-weight: 700; }
-.final-attempt-failed { padding: 9px 11px; border-left: 3px solid #a84c4c; color: #7f3d38; background: #f9ecea; font-size: 10px; line-height: 1.45; }
+.final-attempt-failed { display: flex; align-items: center; gap: 11px; padding: 13px 14px; border: 1px solid #d99b94; border-left: 5px solid #a84c4c; border-radius: 9px; color: #7f3d38; background: #fff0ed; box-shadow: 0 6px 18px rgba(168,76,76,.14); animation: final-wrong-flash .35s ease-out; }
+.final-attempt-icon { width: 34px; height: 34px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #fff; background: #a84c4c; font-size: 18px; font-weight: 800; }
+.final-attempt-failed b { display: block; font-size: 13px; }
+.final-attempt-failed p { margin: 3px 0 0; font-size: 11px; line-height: 1.5; }
+@keyframes final-wrong-flash { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.final-feedback-stage { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 22px 18px; border: 1px solid #d08c84; border-left: 6px solid #a84c4c; border-radius: 12px; color: #713733; background: linear-gradient(145deg, #fff6f3, #ffe9e5); box-shadow: 0 12px 30px rgba(168,76,76,.16); text-align: center; animation: final-wrong-flash .35s ease-out; }
+.final-feedback-cross { width: 54px; height: 54px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: #a84c4c; box-shadow: 0 6px 16px rgba(168,76,76,.3); font-size: 28px; font-weight: 800; }
+.final-feedback-label { margin-top: 4px; color: #a35a53; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
+.final-feedback-stage h3 { margin: 0; font: 700 25px/1.2 "Playfair Display", Georgia, serif; }
+.final-feedback-stage p { margin: 0; font-size: 12px; line-height: 1.5; }
+.final-feedback-stage > strong { margin-top: 3px; padding: 8px 14px; border-radius: 999px; color: #7b4c1f; background: #f5e5cb; font-size: 12px; }
+.final-feedback-stage small { margin-top: 2px; color: #8b6763; font-size: 10px; }
 .final-answer-order { margin: 4px 0 0; padding: 0; }
 .final-registration-item.current { border-color: #c8b991; background: #faf4e8; }

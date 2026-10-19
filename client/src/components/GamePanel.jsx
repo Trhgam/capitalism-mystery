@@ -468,6 +468,7 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
   const hasAnswered = fm?.answeredTeamIds?.includes(effectiveTeam?.id);
   const tokens = state.teams.find((t) => t.id === effectiveTeam?.id)?.guessTokens ?? effectiveTeam?.guessTokens ?? 0;
   const connectedTeams = state.teams.filter((t) => t.isConnected);
+  const showingFeedback = Boolean(fm?.feedbackUntil && fm?.lastAttempt && !fm.lastAttempt.isCorrect);
 
   return (
     <div className="final-right-content">
@@ -491,12 +492,6 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
           ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 30} GIÂY`
           : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
       </span>
-
-      <div className="final-right-question">
-        <span>CÂU HỎI QUYẾT ĐỊNH</span>
-        <p>“Tôi là nhà kinh tế học người Scotland, được xem là một trong những người đặt nền móng cho kinh tế học hiện đại. Năm 1776, tôi xuất bản tác phẩm <b>‘Sự giàu có của các quốc gia’</b>. Tôi là ai?”</p>
-      </div>
-
 
       {isRegistration ? (
         <div className="final-right-registration">
@@ -627,26 +622,27 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
             {currentFinalTeam && <em>⚡ {currentFinalTeam.guessTokens} lượt còn lại</em>}
           </div>
 
-          {fm?.lastAttempt && !fm.lastAttempt.isCorrect && (
-            <div className="final-attempt-failed">
-              ✕ {state.teams.find((team) => team.id === fm.lastAttempt.teamId)?.name} vừa trả lời sai.
-              {fm.lastAttempt.teamId === fm.currentTeamId ? " Đội này vẫn còn lượt nên được đoán tiếp." : " Đang chuyển sang đội kế tiếp."}
+          {showingFeedback ? (
+            <div className="final-feedback-stage" role="alert" aria-live="assertive" key={fm.lastAttempt.attemptedAt}>
+              <span className="final-feedback-cross">✕</span>
+              <span className="final-feedback-label">KẾT QUẢ LƯỢT DỰ ĐOÁN</span>
+              <h3>Chưa chính xác</h3>
+              <p>
+                <b>{fm.lastAttempt.teamName || state.teams.find((team) => team.id === fm.lastAttempt.teamId)?.name}</b>
+                {" "}đã bị trừ <b>1 lượt dự đoán</b>.
+              </p>
+              <strong>⚡ Còn {fm.lastAttempt.remainingTokens} lượt dự đoán</strong>
+              <small>
+                {fm.lastAttempt.continues
+                  ? "Đội sẽ được tiếp tục trả lời sau thông báo này."
+                  : "Đội đã hết lượt — chuẩn bị chuyển sang đội kế tiếp."}
+              </small>
             </div>
-          )}
-
-          {!isRegistered ? (
+          ) : !isRegistered ? (
             <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
           ) : effectiveTeam?.id !== fm?.currentTeamId ? (
             <div className="final-right-unavailable">Chưa đến lượt đội bạn. Vui lòng chờ theo thứ tự đăng ký.</div>
-          ) : (
-            <div className="final-right-options">
-              {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
-                <button key={option} type="button" onClick={() => actions.answer(index, effectiveTeam?.id)}>
-                  <span>{String.fromCharCode(65 + index)}</span>{option}
-                </button>
-              ))}
-            </div>
-          )}
+          ) : null}
 
           <ol className="final-registration-list final-answer-order">
             {fm?.registeredTeamIds?.map((id, index) => {
