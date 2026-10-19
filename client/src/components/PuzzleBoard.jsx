@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { getJigsawPieces } from "./jigsawGeometry.js";
 import { Countdown } from "./Countdown.jsx";
 
-export function PuzzleBoard({ pieces, finished, veiled = false, state, self, actions }) {
+export function PuzzleBoard({ pieces, finished, veiled = false, state, self, actions, adminMode }) {
   const jigsawLayout = useMemo(() => getJigsawPieces(), []);
 
   const revealedCount = finished
@@ -47,17 +47,70 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
         >
           {isFinalMystery ? (
             <div className="puzzle-mystery-veil">
-              <div className="mystery-veil-card">
-                <div className="mystery-veil-seal">
-                  <span>?</span>
+              <div className="mystery-veil-card final-center-card">
+                <div className="final-center-header">
+                  <span className="final-center-seal-icon">?</span>
+                  <span className="final-center-phase-badge">
+                    {isRegPhase
+                      ? `VÒNG QUYẾT ĐỊNH — ĐỌC GỢI Ý (${fm?.registrationSeconds || 30}S)`
+                      : `VÒNG QUYẾT ĐỊNH — TRẢ LỜI CÂU HỎI (${fm?.answerSeconds || 20}S)`}
+                  </span>
                 </div>
-                <h2 className="mystery-veil-title">CHÂN DUNG BÍ ẨN</h2>
-                <div className="mystery-veil-divider">✦ ❖ ✦</div>
-                <p className="mystery-veil-desc">
-                  Các đội đang tranh giải mã nhà kinh tế học bí ẩn.<br />
-                  Ai sẽ là người đầu tiên tìm ra danh tính?
-                </p>
-                <span className="mystery-veil-badge">VÒNG QUYẾT ĐỊNH</span>
+
+                <div className="final-center-question-box">
+                  <span className="final-center-eyebrow">CÂU HỎI QUYẾT ĐỊNH</span>
+                  <p className="final-center-question-quote">
+                    “Tôi là nhà kinh tế học người Scotland, được xem là một trong những người đặt nền móng cho kinh tế học hiện đại. Năm 1776, tôi xuất bản tác phẩm <b>‘Sự giàu có của các quốc gia’</b>. Tôi là ai?”
+                  </p>
+                </div>
+
+                {/* 4 ABCD Options right in the center! */}
+                <div className="final-center-options-section">
+                  {isAnsPhase ? (
+                    adminMode ? (
+                      <div className="final-center-grid">
+                        {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
+                          <div key={option} className="final-center-btn admin-view">
+                            <span className="opt-key">{String.fromCharCode(65 + index)}</span>
+                            <span className="opt-text">{option}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : hasAnswered ? (
+                      <div className="final-center-notice success">
+                        ✓ Đội bạn đã gửi câu trả lời thành công! Vui lòng chờ công bố kết quả…
+                      </div>
+                    ) : !isRegistered ? (
+                      <div className="final-center-notice disabled">
+                        Đội bạn không đăng ký tham gia vòng quyết định này.
+                      </div>
+                    ) : (
+                      <div className="final-center-grid">
+                        {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
+                          <button
+                            key={option}
+                            type="button"
+                            className="final-center-btn player-action"
+                            onClick={() => actions.answer(index, self?.id)}
+                          >
+                            <span className="opt-key">{String.fromCharCode(65 + index)}</span>
+                            <span className="opt-text">{option}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )
+                  ) : (
+                    /* During Registration Phase: show options in preview mode */
+                    <div className="final-center-grid preview-mode">
+                      {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
+                        <div key={option} className="final-center-btn preview">
+                          <span className="opt-key">{String.fromCharCode(65 + index)}</span>
+                          <span className="opt-text">{option}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : veiled ? (

@@ -439,10 +439,6 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
         </p>
       </div>
 
-      <div className="final-right-question">
-        <span>CÂU HỎI QUYẾT ĐỊNH</span>
-        <p>“Tôi là nhà kinh tế học người Scotland, được xem là một trong những người đặt nền móng cho kinh tế học hiện đại. Năm 1776, tôi xuất bản tác phẩm <b>‘Sự giàu có của các quốc gia’</b>. Tôi là ai?”</p>
-      </div>
 
       {isRegistration ? (
         <div className="final-right-registration">
@@ -601,16 +597,8 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
           ) : !isRegistered ? (
             <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
           ) : (
-            <div className="final-right-options">
-              {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => actions.answer(index, effectiveTeam?.id)}
-                >
-                  <span>{String.fromCharCode(65 + index)}</span>{option}
-                </button>
-              ))}
+            <div className="final-right-answering-prompt">
+              👉 Hãy chọn đáp án <b>A, B, C hoặc D</b> ở khung câu hỏi chính giữa màn hình!
             </div>
           )}
         </div>

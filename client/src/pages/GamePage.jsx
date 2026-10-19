@@ -58,6 +58,7 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
           state={state}
           self={liveTeam}
           actions={actions}
+          adminMode={adminMode}
         />
 
         <GamePanel
