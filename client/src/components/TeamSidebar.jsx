@@ -14,7 +14,6 @@ export function TeamSidebar({ teams, currentTeamId, selfId, guessQueue = [] }) {
           const isSelf = team.id === selfId;
           const queueEntry = guessQueue.find((item) => item.teamId === team.id);
           const initial = team.name.trim().charAt(0).toUpperCase();
-          const displayScore = team.score >= 100 ? Math.floor(team.score / 100) : (team.score || team.guessTokens || 0);
 
           return (
             <div
@@ -44,9 +43,9 @@ export function TeamSidebar({ teams, currentTeamId, selfId, guessQueue = [] }) {
                 )}
               </div>
 
-              <div className="team-item-score">
-                <span className="score-number">{displayScore}</span>
-                <span className="score-label">ĐIỂM</span>
+              <div className="team-item-tokens" title={`${team.guessTokens || 0} lượt dự đoán`}>
+                <span className="token-value"><i aria-hidden="true">⚡</i>{team.guessTokens || 0}</span>
+                <span className="token-label">LƯỢT ĐOÁN</span>
               </div>
             </div>
           );

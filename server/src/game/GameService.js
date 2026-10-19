@@ -56,6 +56,7 @@ export class GameService extends EventEmitter {
     this.config = config;
     const persistedState = initialState ? null : persistence?.load();
     this.state = initialState || persistedState || makeInitialState();
+    this.state.teams.forEach((team) => { delete team.score; });
 
     // A server restart closes every Socket.IO connection. Do not trust the
     // connection flags stored in SQLite from the previous process.
@@ -128,7 +129,6 @@ export class GameService extends EventEmitter {
       name,
       sessionToken: randomBytes(24).toString("hex"),
       guessTokens: 0,
-      score: 0,
       isConnected: true,
       joinedAt: new Date().toISOString(),
     };
@@ -216,7 +216,6 @@ export class GameService extends EventEmitter {
     }
     if (isCorrect) {
       team.guessTokens += 1;
-      team.score += 100;
     }
     this.state.lastResult = { isCorrect, timedOut, chosenAnswer: optionIndex, correctAnswer: question.correctAnswer, teamId: team.id, pieceIndex: piece?.index ?? null };
     this.state.phase = PHASES.ANSWER_RESULT;
@@ -231,8 +230,8 @@ export class GameService extends EventEmitter {
 
   requestGuess(teamId) {
     const team = this.requireTeam(teamId);
-    if (![PHASES.ANSWERING, PHASES.ANSWER_RESULT, PHASES.GUESS_PHASE, PHASES.FINAL_MYSTERY].includes(this.state.phase)) {
-      throw new Error("Chỉ đăng ký đoán trong thời gian trả lời, xem kết quả hoặc vòng dự đoán.");
+    if (![PHASES.ANSWER_RESULT, PHASES.GUESS_PHASE, PHASES.FINAL_MYSTERY].includes(this.state.phase)) {
+      throw new Error("Chỉ đăng ký dự đoán sau khi câu hỏi được trả lời đúng.");
     }
     if (this.state.phase === PHASES.FINAL_MYSTERY) {
       return this.registerFinalMystery(teamId);
@@ -270,6 +269,40 @@ export class GameService extends EventEmitter {
         const seconds = this.state.finalGuess ? this.config.finalGuessSeconds : this.config.guessSeconds;
         this.state.deadline = Date.now() + seconds * 1000;
         this.commit("guess.next", teamId);
+      }
+    }
+  }
+
+  cancelGuess(teamId) {
+    this.requireTeam(teamId);
+
+    if (this.state.phase === PHASES.FINAL_MYSTERY && this.state.finalMystery?.subphase === "REGISTRATION") {
+      if (!this.state.finalMystery.registeredTeamIds.includes(teamId)) throw new Error("Đội chưa đăng ký dự đoán.");
+      this.state.finalMystery.registeredTeamIds = this.state.finalMystery.registeredTeamIds.filter((id) => id !== teamId);
+      this.state.guessQueue = this.state.guessQueue.filter((item) => item.teamId !== teamId);
+      this.commit("final-mystery.cancel", teamId);
+      return;
+    }
+
+    if (![PHASES.ANSWER_RESULT, PHASES.GUESS_PHASE].includes(this.state.phase)) {
+      throw new Error("Hiện không thể hủy đăng ký dự đoán.");
+    }
+    const currentWaiting = this.state.guessQueue.find((item) => item.status === "waiting");
+    const entry = this.state.guessQueue.find((item) => item.teamId === teamId && item.status === "waiting");
+    if (!entry) throw new Error("Đội chưa có trong hàng đợi.");
+
+    const wasCurrentGuesser = currentWaiting?.teamId === teamId;
+    this.state.guessQueue = this.state.guessQueue.filter((item) => item !== entry);
+    this.commit("guess.cancel", teamId);
+
+    if (this.state.phase === PHASES.GUESS_PHASE && wasCurrentGuesser) {
+      const nextWaiting = this.state.guessQueue.find((item) => item.status === "waiting");
+      if (nextWaiting) {
+        const seconds = this.state.finalGuess ? this.config.finalGuessSeconds : this.config.guessSeconds;
+        this.state.deadline = Date.now() + seconds * 1000;
+        this.commit("guess.next", nextWaiting.teamId);
+      } else {
+        this.checkFinalMysteryOrAdvance("guess-cancelled");
       }
     }
   }
@@ -427,7 +460,6 @@ export class GameService extends EventEmitter {
 
     if (isCorrect) {
       // Đoán đúng đầu tiên -> Chiến thắng!
-      team.score += 300;
       this.state.winner = {
         teamId,
         teamName: team.name,
@@ -584,7 +616,7 @@ export class GameService extends EventEmitter {
   reset() {
     const connectedTeams = this.state.teams
       .filter((team) => FIXED_TEAM_NAMES.includes(team.name))
-      .map((team) => ({ ...team, guessTokens: 0, score: 0 }));
+      .map(({ score: _legacyScore, ...team }) => ({ ...team, guessTokens: 0 }));
     this.state = { ...makeInitialState(), teams: connectedTeams };
     this.commit("game.reset");
   }

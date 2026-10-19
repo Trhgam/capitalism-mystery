@@ -68,6 +68,7 @@ describe("GameService", () => {
     const correct = questions.find((item) => item.id === source).correctAnswer;
     game.answer(first.id, correct);
     expect(game.getTeam(first.id).guessTokens).toBe(1);
+    expect(game.getTeam(first.id).score).toBeUndefined();
     expect(() => game.answer(first.id, correct)).toThrow("Hiện không nhận đáp án");
     expect(question).toBeTruthy();
   });
@@ -87,13 +88,13 @@ describe("GameService", () => {
     expect(game.state.phase).toBe(PHASES.FINISHED);
   });
 
-  it("shows an incorrect result briefly, then skips Guess Phase even when a team queued", () => {
+  it("does not allow teams to enter Guess Queue before the question is answered correctly", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
     game.getTeam(second.id).guessTokens = 1;
     game.start();
-    game.requestGuess(second.id);
+    expect(() => game.requestGuess(second.id)).toThrow("sau khi câu hỏi được trả lời đúng");
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, (source.correctAnswer + 1) % 4);
 
@@ -183,12 +184,10 @@ describe("GameService", () => {
     game.getTeam(first.id).guessTokens = 1;
     game.getTeam(second.id).guessTokens = 1;
     game.start();
-    game.requestGuess(first.id);
-    game.requestGuess(second.id);
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, source.correctAnswer);
-
-    game.beginGuessPhase();
+    game.requestGuess(first.id);
+    game.requestGuess(second.id);
     expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
 
     // First team guesses wrong
@@ -245,6 +244,23 @@ describe("GameService", () => {
     expect(r2.isCorrect).toBe(true);
     expect(game.state.phase).toBe(PHASES.FINISHED);
     expect(game.state.winner.teamId).toBe(first.id);
+  });
+
+  it("allows a queued team to cancel without consuming its token", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    game.start();
+    const source = questions.find((item) => item.id === game.state.currentQuestionId);
+    game.answer(first.id, source.correctAnswer);
+    game.requestGuess(first.id);
+
+    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
+    expect(game.state.guessQueue).toHaveLength(1);
+    game.cancelGuess(first.id);
+
+    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.guessQueue).toHaveLength(0);
+    expect(game.getTeam(first.id).guessTokens).toBe(1);
   });
 
   it("shows wrong-answer feedback before opening SELECT_NEXT_TEAM", () => {

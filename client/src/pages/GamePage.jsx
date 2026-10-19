@@ -29,7 +29,7 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
           </span>
           <span>
             <small>LƯỢT DỰ ĐOÁN</small>
-            <strong>{liveTeam?.guessTokens || 0}</strong>
+            <strong>{state.teams.find((t) => t.id === liveTeam?.id)?.guessTokens ?? liveTeam?.guessTokens ?? 0}</strong>
           </span>
         </div>
       </header>

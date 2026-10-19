@@ -42,7 +42,7 @@ npm audit
 - Team Name duy nhất, tối đa 7 đội; session token trong `localStorage` dùng để reconnect.
 - Admin có mã riêng và không tham gia trả lời.
 - Active Team rút một câu ngẫu nhiên chưa dùng và có 20 giây trả lời.
-- Đúng: mở mảnh, +1 Guess Token, +100 điểm. Sai/hết giờ: khóa mảnh.
+- Đúng: mở mảnh và nhận +1 Guess Token. Sai/hết giờ: khóa mảnh. Trò chơi không tính điểm.
 - Đội có token đăng ký Guess Queue trong lúc trả lời/xem kết quả.
 - Guess Phase kéo dài 10 giây; lượt cuối kéo dài 20 giây.
 - Gửi dự đoán hợp lệ tiêu hao 1 token. Dự đoán đúng đầu tiên thắng.

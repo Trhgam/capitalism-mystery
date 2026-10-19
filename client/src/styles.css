@@ -63,6 +63,21 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .figma-header { height: 64px; padding: 0 32px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(61,61,87,.18); background: rgba(248,240,223,.95); }
 .figma-header .brand { text-transform: none; letter-spacing: 0; }
 .figma-header .brand span { font: 700 17px/25.5px "Playfair Display", Georgia, serif; }
+.rules-help-button { width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid #9e8d69; border-radius: 50%; color: #3d3d57; background: rgba(255,253,248,.7); font: 700 18px/1 "Playfair Display", Georgia, serif; transition: color .15s, background .15s, transform .15s; }
+.rules-help-button:hover { color: #fffdf8; background: #3d3d57; transform: translateY(-1px); }
+.rules-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(30,29,43,.55); backdrop-filter: blur(5px); }
+.rules-modal { position: relative; width: min(560px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; padding: 38px; border: 1px solid rgba(158,141,105,.5); border-radius: 18px; color: #3d3d57; background: #fffdf8; box-shadow: 0 28px 90px rgba(28,27,40,.3); }
+.rules-modal-close { position: absolute; top: 15px; right: 15px; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; color: #777486; background: #f3ecdf; font-size: 24px; line-height: 1; }
+.rules-modal-close:hover { color: #fff; background: #3d3d57; }
+.rules-modal-eyebrow { color: #9e8d69; font-size: 10px; font-weight: 700; letter-spacing: .18em; }
+.rules-modal h2 { margin: 8px 0 24px; font: 400 38px/1.15 "Playfair Display", Georgia, serif; }
+.rules-steps { margin: 0; padding: 0; list-style: none; counter-reset: rules; }
+.rules-steps li { position: relative; min-height: 42px; padding: 0 0 17px 48px; color: #686476; font-size: 13px; line-height: 1.55; counter-increment: rules; }
+.rules-steps li::before { content: counter(rules, decimal-leading-zero); position: absolute; top: 0; left: 0; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid #d7c9ad; border-radius: 50%; color: #8f7040; font: 700 10px/1 "DM Sans", sans-serif; }
+.rules-steps b { color: #3d3d57; }
+.rules-modal-tip { margin-top: 2px; padding: 13px 15px; border-left: 3px solid #9e8d69; color: #5f563f; background: #f5ecda; font-size: 13px; font-weight: 700; line-height: 1.5; }
+.rules-understood-button { width: 100%; margin-top: 20px; padding: 13px 18px; border: 0; border-radius: 9px; color: #fffdf8; background: #3d3d57; font-weight: 700; }
+.rules-understood-button:hover { background: #29283c; }
 .figma-token-card { width: fit-content; min-width: 126px; height: 44px; display: inline-flex; align-items: center; gap: 9px; padding: 0 13px 0 8px; border: 1px solid rgba(61,61,87,.18); border-radius: 11px; background: rgba(255,255,255,.48); flex-shrink: 0; }
 .figma-token-icon { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; background: #efe4ce; }
 .figma-token-icon img { width: 18px; height: 18px; }
@@ -251,21 +266,25 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   margin-top: 1px;
 }
 
-.team-item-score {
+.team-item-tokens {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
 }
 
-.score-number {
+.token-value {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   font-size: 14px;
   font-weight: 700;
   color: #282c3f;
   line-height: 1;
 }
+.token-value i { color: #b08b42; font-size: 12px; font-style: normal; }
 
-.score-label {
+.token-label {
   font-size: 7px;
   font-weight: 600;
   color: #8e887d;
@@ -299,12 +318,13 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   margin-top: 2px;
 }
 
-.team-item.active .score-number {
+.team-item.active .token-value {
   color: #ffffff;
   font-size: 16px;
 }
+.team-item.active .token-value i { color: #e5c77e; }
 
-.team-item.active .score-label {
+.team-item.active .token-label {
   color: #c5b99b;
 }
 
@@ -603,6 +623,8 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   color: white;
   cursor: default;
 }
+.quiz-cancel-btn { padding: 10px 14px; border: 1px solid #c9bca9; border-radius: 9px; color: #6a5e4a; background: #f4ede2; font-weight: 700; }
+.quiz-cancel-btn:hover { color: #fff; background: #8b4a45; border-color: #8b4a45; }
 
 /* --- Right Column: Question Panel --- */
 .quiz-card-panel {
@@ -1316,6 +1338,51 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   padding: 16px !important;
   overflow-y: auto;
 }
+
+/* During Final Mystery: hide portrait completely, show only ? badge */
+.final-mystery-card .final-mystery-overlay {
+  align-items: center !important;
+  justify-content: center;
+  overflow: hidden;
+  background: rgba(22, 24, 35, 1);
+}
+.final-mystery-card .final-mystery-overlay::after {
+  content: "?";
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(229,199,126,.8);
+  border-radius: 50%;
+  color: #e5c77e;
+  background: rgba(20,22,32,.75);
+  font: 700 36px/1 "Playfair Display", Georgia, serif;
+  box-shadow: 0 12px 32px rgba(0,0,0,.55), 0 0 0 6px rgba(229,199,126,.12);
+  backdrop-filter: blur(2px);
+}
+.final-mystery-card .final-mystery-panel { display: none; }
+
+/* Final Mystery content in right column — no scroll, compact gaps */
+.final-right-content { display: flex; flex-direction: column; gap: 8px; overflow: visible; padding-right: 4px; text-align: left; }
+.final-right-phase { width: fit-content; padding: 4px 9px; border-radius: 999px; color: #7b653e; background: #efe4ce; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+.final-right-content .quiz-question-title { margin: 0; }
+.final-right-notice { padding: 8px 12px; border: 1px solid #dfcfac; border-radius: 10px; color: #5f563f; background: #faf4e8; }
+.final-right-notice b { display: block; color: #493e2b; font-size: 12px; }
+.final-right-notice p { margin: 3px 0 0; font-size: 10px; line-height: 1.45; }
+.final-right-question { padding: 10px 12px; border: 1px solid rgba(61,61,87,.16); border-radius: 10px; background: #fffdf8; }
+.final-right-question > span { color: #9e8d69; font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.final-right-question p { margin: 5px 0 0; color: #282c3f; font: italic 600 12px/1.45 "Playfair Display", Georgia, serif; }
+.final-right-registration, .final-right-answering { display: flex; flex-direction: column; gap: 7px; }
+.final-register-button { padding: 10px 15px; border: 0; border-radius: 9px; color: #fff; background: #282c3f; font-weight: 700; font-size: 13px; }
+.final-register-button:hover { background: #1e2130; }
+.final-right-registered { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid #91b19b; border-radius: 9px; color: #315d43; background: #edf6ef; font-size: 11px; font-weight: 700; }
+.final-right-registered button { padding: 6px 10px; border: 1px solid #bd8b85; border-radius: 7px; color: #8b3939; background: #fff; font-size: 10px; font-weight: 700; }
+.final-right-unavailable { padding: 8px 12px; border-radius: 8px; color: #8b3939; background: #f9ecea; font-size: 11px; }
+.final-right-queue { margin: 0; color: #777486; font-size: 10px; line-height: 1.4; }
+.final-right-options { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.final-right-options button { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 10px; border: 1px solid rgba(61,61,87,.18); border-radius: 9px; color: #282c3f; background: #fffdf8; font-size: 11px; font-weight: 700; text-align: left; }
+.final-right-options button:hover { border-color: #9e8d69; background: #faf4e8; }
+.final-right-options button span { width: 24px; height: 24px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid #c8b991; border-radius: 50%; color: #8f7040; }
 
 .final-mystery-panel {
   width: 100%;

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Brand } from "../components/Brand.jsx";
 
 export function LobbyPage({
@@ -8,6 +9,7 @@ export function LobbyPage({
   error,
   actions,
 }) {
+  const [showRules, setShowRules] = useState(false);
   const liveTeam = state.teams.find((item) => item.id === team?.id) || team;
   const slots = Array.from(
     { length: 7 },
@@ -15,12 +17,55 @@ export function LobbyPage({
   );
   const connectedTeamCount = state.teams.filter((item) => item.isConnected).length;
 
+  useEffect(() => {
+    if (!showRules) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setShowRules(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [showRules]);
+
 
   return (
     <main className="figma-lobby">
       <header className="figma-header">
         <Brand />
+        <button
+          type="button"
+          className="rules-help-button"
+          aria-label="Xem thể lệ trò chơi"
+          title="Xem thể lệ trò chơi"
+          onClick={() => setShowRules(true)}
+        >
+          ?
+        </button>
       </header>
+
+      {showRules && (
+        <div
+          className="rules-modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowRules(false);
+          }}
+        >
+          <section className="rules-modal" role="dialog" aria-modal="true" aria-labelledby="rules-title">
+            <button type="button" className="rules-modal-close" aria-label="Đóng thể lệ" onClick={() => setShowRules(false)}>×</button>
+            <span className="rules-modal-eyebrow">HƯỚNG DẪN NHANH</span>
+            <h2 id="rules-title">Thể lệ trò chơi</h2>
+            <ol className="rules-steps">
+              <li><b>Trả lời câu hỏi:</b> Đội đến lượt chọn một đáp án trước khi hết giờ.</li>
+              <li><b>Tích lũy lượt dự đoán:</b> Trò chơi không tính điểm. Trả lời đúng mở một mảnh và nhận +1 lượt dự đoán; trả lời sai khóa mảnh.</li>
+              <li><b>Dự đoán nhân vật:</b> Sau khi trả lời đúng, đội có thể dùng lượt ngay hoặc lưu lại. Các đội đăng ký sẽ vào hàng đợi.</li>
+              <li><b>Chuyển lượt:</b> Đội vừa chơi chọn một đội đang kết nối để trả lời câu tiếp theo.</li>
+              <li><b>Final Mystery:</b> Đội có lượt dự đoán phải đăng ký. Nếu tất cả đã hết lượt, mỗi đội đang chơi được cấp 1 lượt miễn phí.</li>
+            </ol>
+            <div className="rules-modal-tip">Không xếp hạng bằng điểm — đội dự đoán đúng nhà kinh tế học bí ẩn đầu tiên sẽ chiến thắng.</div>
+            <button type="button" className="rules-understood-button" onClick={() => setShowRules(false)}>Đã hiểu, bắt đầu thôi</button>
+          </section>
+        </div>
+      )}
 
       {error && <div className="global-error">{error}</div>}
 

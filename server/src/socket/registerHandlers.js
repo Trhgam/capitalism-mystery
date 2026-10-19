@@ -66,6 +66,7 @@ export function registerHandlers(io, socket, game, config) {
     return {};
   }));
   socket.on("guess:request", (_, ack) => reply(ack, () => { requireTeam(); game.requestGuess(teamId); return {}; }));
+  socket.on("guess:cancel", (_, ack) => reply(ack, () => { requireTeam(); game.cancelGuess(teamId); return {}; }));
   socket.on("guess:save", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
   socket.on("guess:skip", (_, ack) => reply(ack, () => { requireTeam(); game.saveGuess(teamId); return {}; }));
   socket.on("guess:submit", (payload, ack) => reply(ack, () => { requireTeam(); const data = guessSchema.parse(payload); return game.submitGuess(teamId, data.answer); }));

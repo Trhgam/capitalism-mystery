@@ -29,7 +29,7 @@ Các quyết định đã chốt:
 - Admin login bằng `ADMIN_CODE`.
 - State machine server-authoritative.
 - Random câu hỏi không lặp; active-team authorization; server timer.
-- Chấm đáp án, mở/khóa mảnh, token và điểm.
+- Chấm đáp án, mở/khóa mảnh và quản lý lượt dự đoán; trò chơi không tính điểm.
 - Guess Queue, Guess Phase, chuẩn hóa đáp án, trừ token và Winner.
 - Chọn đội tiếp theo; Admin Pause/Resume/Reset.
 - SQLite snapshot và event log.
@@ -58,7 +58,7 @@ Lưu ý: môi trường sandbox chặn cả loopback localhost (`EACCES`), nên 
 2. Ghi event audit.
 3. Phát `changed` để Socket.IO broadcast `game:state`.
 
-`server/src/socket/registerHandlers.js` gắn identity vào từng socket (`teamId` hoặc `isAdmin`) và kiểm tra Zod trước khi gọi service. Không chuyển logic chấm điểm hoặc phân quyền xuống client.
+`server/src/socket/registerHandlers.js` gắn identity vào từng socket (`teamId` hoặc `isAdmin`) và kiểm tra Zod trước khi gọi service. Không chuyển logic chấm đáp án hoặc phân quyền xuống client.
 
 SQLite hiện dùng hai bảng:
 
@@ -172,7 +172,7 @@ LOBBY
 ### Admin/recovery
 
 - Pause đóng băng timer; Resume giữ gần đúng số giây còn lại.
-- Reset đưa puzzle/token/score về đầu nhưng giữ danh sách đội.
+- Reset đưa puzzle và lượt dự đoán về đầu nhưng giữ danh sách đội.
 - Restart server rồi client reconnect thấy lại state đã lưu.
 - `/admin` không điều khiển được khi chưa đăng nhập.
 

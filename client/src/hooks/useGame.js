@@ -56,7 +56,16 @@ export function useGame({ adminMode }) {
     };
     const onConnect = () => { setConnected(true); resumeIdentity(); };
     const onDisconnect = () => setConnected(false);
-    const onState = (nextState) => setState(nextState);
+    const onState = (nextState) => {
+      setState(nextState);
+      // Sync team's live data (guessTokens, etc.) from every broadcast
+      setTeam((prev) => {
+        if (!prev) return prev;
+        const live = nextState.teams?.find((t) => t.id === prev.id);
+        if (!live) return prev;
+        return { ...prev, guessTokens: live.guessTokens, isConnected: live.isConnected };
+      });
+    };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("game:state", onState);
@@ -83,6 +92,7 @@ export function useGame({ adminMode }) {
     selectQuestion: () => run("question:select"),
     answer: (optionIndex) => run("question:answer", { optionIndex }),
     requestGuess: () => run("guess:request"),
+    cancelGuess: () => run("guess:cancel"),
     saveGuess: () => run("guess:save"),
     submitGuess: (answer) => run("guess:submit", { answer }),
     selectNext: (teamId) => run("turn:select-next", { teamId }),

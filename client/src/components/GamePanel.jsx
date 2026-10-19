@@ -18,8 +18,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
   const canRequestGuess =
     hasTokens &&
     !isWaitingInQueue &&
-    (state.phase === "ANSWERING" ||
-      (state.phase === "ANSWER_RESULT" && state.lastResult?.isCorrect) ||
+    (state.phase === "ANSWER_RESULT" ||
       state.phase === "GUESS_PHASE" ||
       state.phase === "FINAL_MYSTERY");
 
@@ -59,14 +58,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
         <div className="quiz-card-body">
           {/* Phase: FINAL_MYSTERY */}
           {state.phase === "FINAL_MYSTERY" && (
-            <div className="quiz-prompt-state">
-              <h2 className="quiz-question-title">Vòng Gợi Ý Quyết Định</h2>
-              <p className="quiz-waiting-text">
-                {state.finalMystery?.subphase === "REGISTRATION"
-                  ? "Các đội theo dõi câu hỏi và đăng ký tại Bảng Trung Tâm."
-                  : "Các đội đã đăng ký chọn đáp án A, B, C, D tại Bảng Trung Tâm."}
-              </p>
-            </div>
+            <FinalMysteryContent state={state} self={self} actions={actions} />
           )}
 
           {/* Phase: SELECT_QUESTION (auto-starts immediately without any confirm button) */}
@@ -162,6 +154,9 @@ export function GamePanel({ state, self, adminMode, actions }) {
                       />
                       <button type="submit" className="quiz-primary-btn">
                         Gửi dự đoán <span>→</span>
+                      </button>
+                      <button type="button" className="quiz-cancel-btn" onClick={actions.cancelGuess}>
+                        Hủy
                       </button>
                     </form>
                     <p className="vintage-form-hint">
@@ -288,24 +283,23 @@ export function GamePanel({ state, self, adminMode, actions }) {
           )}
         </div>
 
-        {/* Helper Footer Note */}
-        <div className="quiz-card-footer">
-          <p className="quiz-helper-note">
-            {state.phase === "ANSWERING"
-              ? "Đội hiện tại trả lời câu hỏi. Sau đó hệ thống sẽ cho phép chọn đội tiếp theo."
-              : state.phase === "ANSWER_RESULT"
-                ? state.lastResult?.isCorrect
-                  ? "Đội hiện tại có thể chọn Dự đoán ngay hoặc Lưu lượt đoán cho vòng sau."
-                  : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
-                : state.phase === "GUESS_PHASE"
-                  ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
-                  : state.phase === "FINAL_MYSTERY" || state.phase === "FINAL_CLUE_PHASE"
-                    ? "Vòng Final Mystery: Giải mã gợi ý tối hậu để phân định người chiến thắng chung cuộc!"
+        {state.phase !== "FINAL_MYSTERY" && state.phase !== "FINAL_CLUE_PHASE" && (
+          <div className="quiz-card-footer">
+            <p className="quiz-helper-note">
+              {state.phase === "ANSWERING"
+                ? "Đội hiện tại trả lời câu hỏi. Sau đó hệ thống sẽ cho phép chọn đội tiếp theo."
+                : state.phase === "ANSWER_RESULT"
+                  ? state.lastResult?.isCorrect
+                    ? "Đội hiện tại có thể chọn Dự đoán ngay hoặc Lưu lượt đoán cho vòng sau."
+                    : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
+                  : state.phase === "GUESS_PHASE"
+                    ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
                     : state.phase === "SELECT_NEXT_TEAM"
                       ? "Đội vừa chơi đang chọn đội tiếp theo tham gia trả lời câu hỏi."
                       : "Hệ thống đang chuẩn bị cho vòng tiếp theo."}
-          </p>
-        </div>
+            </p>
+          </div>
+        )}
       </section>
 
       {/* Action Banner directly below Question Card */}
@@ -336,9 +330,10 @@ export function GamePanel({ state, self, adminMode, actions }) {
               </button>
             </>
           ) : isWaitingInQueue ? (
-            <button type="button" className="puzzle-guess-btn queued" disabled>
-              ✓ Đã vào hàng đợi
-            </button>
+            <>
+              <button type="button" className="puzzle-save-btn" onClick={actions.cancelGuess}>Hủy đăng ký</button>
+              <button type="button" className="puzzle-guess-btn queued" disabled>✓ Đã vào hàng đợi</button>
+            </>
           ) : (
             <button
               type="button"
@@ -349,7 +344,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
                 !hasTokens
                   ? "Bạn chưa có lượt dự đoán"
                   : !canRequestGuess
-                    ? "Chỉ có thể dự đoán trong lúc trả lời câu hỏi hoặc xem kết quả"
+                    ? "Chỉ đăng ký dự đoán sau khi trả lời đúng"
                     : "Nhấn để yêu cầu dự đoán"
               }
             >
@@ -358,6 +353,73 @@ export function GamePanel({ state, self, adminMode, actions }) {
           )}
         </div>
       </div>
+      )}
+    </div>
+  );
+}
+
+function FinalMysteryContent({ state, self, actions }) {
+  const fm = state.finalMystery;
+  const isRegistration = fm?.subphase === "REGISTRATION";
+  const isRegistered = fm?.registeredTeamIds?.includes(self?.id);
+  const hasAnswered = fm?.answeredTeamIds?.includes(self?.id);
+
+  return (
+    <div className="final-right-content">
+      <span className="final-right-phase">
+        {isRegistration
+          ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 20} GIÂY`
+          : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 15} GIÂY`}
+      </span>
+
+      <div className="final-right-notice">
+        <b>Chưa có đội nào đoán đúng nhân vật.</b>
+        <p>
+          {fm?.grantedFreeToken
+            ? "Tất cả đội đang chơi đã hết lượt, nên mỗi đội được cấp thêm 1 lượt dự đoán miễn phí."
+            : "Các đội có lượt dự đoán có thể đăng ký tham gia vòng quyết định."}
+        </p>
+      </div>
+
+      <div className="final-right-question">
+        <span>CÂU HỎI QUYẾT ĐỊNH</span>
+        <p>“Tôi là nhà kinh tế học người Scotland, được xem là một trong những người đặt nền móng cho kinh tế học hiện đại. Năm 1776, tôi xuất bản tác phẩm <b>‘Sự giàu có của các quốc gia’</b>. Tôi là ai?”</p>
+      </div>
+
+      {isRegistration ? (
+        <div className="final-right-registration">
+          {isRegistered ? (
+            <div className="final-right-registered">
+              <span>✓ Đội bạn đã đăng ký trả lời.</span>
+              <button type="button" onClick={actions.cancelGuess}>Hủy đăng ký</button>
+            </div>
+          ) : (self?.guessTokens || 0) > 0 ? (
+            <button type="button" className="final-register-button" onClick={actions.registerFinalMystery}>
+              Đăng ký trả lời — dùng 1 lượt <span>→</span>
+            </button>
+          ) : (
+            <div className="final-right-unavailable">Đội bạn không còn lượt dự đoán để đăng ký.</div>
+          )}
+          <p className="final-right-queue">
+            Đã đăng ký: {fm?.registeredTeamIds?.map((id) => state.teams.find((team) => team.id === id)?.name).filter(Boolean).join(", ") || "Chưa có đội nào"}
+          </p>
+        </div>
+      ) : (
+        <div className="final-right-answering">
+          {hasAnswered ? (
+            <div className="final-right-unavailable">Đội bạn đã trả lời và không thể chọn lại.</div>
+          ) : !isRegistered ? (
+            <div className="final-right-unavailable">Đội bạn không đăng ký vòng cuối.</div>
+          ) : (
+            <div className="final-right-options">
+              {["Adam Smith", "Karl Marx", "John Maynard Keynes", "David Ricardo"].map((option, index) => (
+                <button key={option} type="button" onClick={() => actions.answer(index)}>
+                  <span>{String.fromCharCode(65 + index)}</span>{option}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
