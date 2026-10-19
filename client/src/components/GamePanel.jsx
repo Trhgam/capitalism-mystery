@@ -142,7 +142,10 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
           {state.phase === "GUESS_PHASE" && (() => {
             const currentGuesser = state.guessQueue?.find((item) => item.status === "waiting");
             const currentGuesserTeam = state.teams.find((t) => t.id === currentGuesser?.teamId);
-            const isMyTurnToGuess = queueItem?.status === "waiting" && currentGuesser?.teamId === self?.id;
+            const isMyTurnToGuess = queueItem?.status === "waiting" && currentGuesser?.teamId === liveSelf?.id;
+            const guesserTeam = state.teams.find((t) => t.id === state.lastGuessResult?.teamId);
+            const guesserTeamName = guesserTeam?.name || state.lastGuessResult?.teamName || "Đội chơi";
+            const isGuessAuthor = Boolean(state.lastGuessResult?.teamId && state.lastGuessResult.teamId === liveSelf?.id);
 
             return (
               <div className="quiz-guess-state">
@@ -185,7 +188,15 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                       <div className="vintage-status-text">
                         {state.lastGuessResult?.answer && (
                           <p style={{ margin: "0 0 6px", fontSize: "14px", color: "#8b3939" }}>
-                            Bạn đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
+                            {isGuessAuthor ? (
+                              <>
+                                <strong>{guesserTeamName} (Bạn)</strong> đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
+                              </>
+                            ) : (
+                              <>
+                                Đội <strong>{guesserTeamName}</strong> đã dự đoán: <strong>"{state.lastGuessResult.answer}"</strong>
+                              </>
+                            )}
                           </p>
                         )}
                         <p style={{ margin: "0 0 6px" }}>
@@ -193,11 +204,19 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                         </p>
                         {hasTokens ? (
                           <p style={{ margin: "0", color: "#5a5343" }}>
-                            Đội bạn vẫn còn <strong>{tokens} lượt dự đoán</strong>. Hãy bấm nút bên dưới để tiếp tục!
+                            {isGuessAuthor ? (
+                              <>
+                                <strong>{guesserTeamName} (Bạn)</strong> vẫn còn <strong>{tokens} lượt dự đoán</strong>. Hãy bấm nút bên dưới để tiếp tục!
+                              </>
+                            ) : (
+                              <>
+                                Đội <strong>{guesserTeamName}</strong> vẫn còn lượt dự đoán.
+                              </>
+                            )}
                           </p>
                         ) : (
                           <p style={{ margin: "0", color: "#777486" }}>
-                            Đội bạn đã hết lượt dự đoán. Đang chuẩn bị chuyển sang chọn đội tiếp theo…
+                            Đội <strong>{guesserTeamName}{isGuessAuthor ? " (Bạn)" : ""}</strong> đã hết lượt dự đoán. Đang chuẩn bị chuyển sang chọn đội tiếp theo…
                           </p>
                         )}
                       </div>
@@ -210,7 +229,7 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                       <div className="vintage-retry-action-box">
                         <div className="vintage-retry-info">
                           <span className="retry-lightning">⚡</span>
-                          <span>Đội bạn còn <strong>{tokens} lượt đoán</strong></span>
+                          <span><strong>{guesserTeamName}{isGuessAuthor ? " (Bạn)" : ""}</strong> còn <strong>{tokens} lượt đoán</strong></span>
                         </div>
                         <button
                           type="button"

@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL || (import.meta.env.DEV ? "http://localhost:3000" : window.location.origin);
+const serverUrl = (() => {
+  if (typeof window !== "undefined" && window.location) {
+    if (window.location.port === "5173") {
+      return `${window.location.protocol}//${window.location.hostname}:3000`;
+    }
+    return window.location.origin;
+  }
+  return import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
+})();
 const socket = io(serverUrl, { autoConnect: true });
 
 const emitAck = (event, payload = {}) => new Promise((resolve, reject) => {
