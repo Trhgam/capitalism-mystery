@@ -1,3 +1,5 @@
+@import "./animation.css";
+
 :root {
   font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
   color: #24232c;
@@ -117,14 +119,12 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .figma-waiting i { width: 5px; height: 5px; display: block; border-radius: 50%; background: #9e8d69; animation: waiting-dot 1.2s infinite ease-in-out; }
 .figma-waiting i:nth-child(1) { opacity: .56; animation-delay: -.24s; }
 .figma-waiting i:nth-child(2) { opacity: .76; animation-delay: -.12s; }
-@keyframes waiting-dot { 50% { transform: translateY(-3px); opacity: 1; } }
 .figma-control-button { min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 0 20px; border: 1px solid transparent; border-radius: 10px; color: #fffdf8; background: #3d3d57; font-size: 13px; font-weight: 700; line-height: 19.5px; }
 .figma-control-button:hover { background: #29283c; transform: translateY(-1px); }
 .figma-control-button img { width: 16px; height: 16px; }
 
 .loading-screen { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 12px; color: var(--purple); }
 .loading-screen span { width: 64px; height: 64px; display: grid; place-items: center; background: var(--purple); color: var(--cream); font: 700 24px "Playfair Display", serif; animation: pulse 1.4s infinite; }
-@keyframes pulse { 50% { transform: scale(.94); opacity: .75; } }
 
 /* ========================================================
    GAME PAGE & MAIN 3-COLUMN LAYOUT (Rock-solid layout preservation)
@@ -220,6 +220,34 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   color: #282c3f;
 }
 
+.team-item.selectable-admin {
+  cursor: pointer;
+}
+.team-item.selectable-admin:hover:not(.active) {
+  border-color: rgba(212, 175, 55, 0.4);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.team-item.admin-selected {
+  border: 2px solid #d4af37 !important;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.35), inset 0 0 6px rgba(212, 175, 55, 0.12) !important;
+}
+.team-item.active.admin-selected {
+  border: 2px solid #ffd700 !important;
+  box-shadow: 0 0 16px rgba(255, 215, 0, 0.5) !important;
+}
+
+.team-item-badge.admin-select-badge {
+  color: #1a1c29;
+  background: #d4af37;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  display: inline-block;
+}
+
 .team-item:not(.active):hover {
   background: rgba(255, 255, 255, 0.5);
 }
@@ -267,10 +295,12 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 }
 
 .team-item-tokens {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   flex-shrink: 0;
+  transition: transform 0.3s ease;
 }
 
 .token-value {
@@ -1679,11 +1709,6 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   animation: fmPulseGlow 1.5s infinite alternate ease-in-out;
 }
 
-@keyframes fmPulseGlow {
-  0% { box-shadow: 0 0 12px rgba(212, 175, 55, 0.2); }
-  100% { box-shadow: 0 0 28px rgba(231, 76, 60, 0.45); }
-}
-
 /* FM Trigger Reason Notice Banner */
 .fm-trigger-reason-banner {
   display: flex;
@@ -1798,7 +1823,107 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   text-align: center;
 }
 
+/* Admin Action Card in Final Mystery */
+.final-admin-action-card {
+  padding: 10px 12px;
+  background: #fffdf8;
+  border: 1.5px solid #d4af37;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
+.final-admin-action-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 
+.final-admin-team-label {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #8c8578;
+  letter-spacing: 0.08em;
+}
 
+.final-admin-team-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #282c3f;
+}
 
+.final-admin-token-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7d5b12;
+  background: #faf4e8;
+  border: 1px solid #e5c77e;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.final-admin-token-badge i {
+  color: #d4af37;
+  font-style: normal;
+}
+
+.final-admin-team-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.final-admin-chip {
+  padding: 3px 8px;
+  border: 1px solid #dcd7cb;
+  background: #fbf9f4;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #493e2b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.final-admin-chip:hover {
+  border-color: #d4af37;
+  background: #fffcf2;
+}
+
+.final-admin-chip.selected {
+  border-color: #282c3f;
+  background: #282c3f;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.final-admin-chip.registered {
+  border-color: #91b19b;
+  background: #edf6ef;
+  color: #315d43;
+}
+
+.final-admin-chip.registered.selected {
+  border-color: #1e4a30;
+  background: #2e5b41;
+  color: #ffffff;
+}
+
+.final-admin-chip .chip-badge {
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.final-admin-action-btn {
+  width: 100%;
+}

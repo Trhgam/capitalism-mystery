@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Countdown } from "./Countdown.jsx";
 
-export function GamePanel({ state, self, adminMode, actions }) {
+export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
   const [guess, setGuess] = useState("");
   const activeTeam = state.teams.find((item) => item.id === state.currentTeamId);
   const isActive = self?.id === state.currentTeamId;
@@ -59,7 +59,13 @@ export function GamePanel({ state, self, adminMode, actions }) {
         <div className="quiz-card-body">
           {/* Phase: FINAL_MYSTERY */}
           {state.phase === "FINAL_MYSTERY" && (
-            <FinalMysteryContent state={state} self={self} adminMode={adminMode} actions={actions} />
+            <FinalMysteryContent
+              state={state}
+              self={self}
+              adminMode={adminMode}
+              actions={actions}
+              onSelectTeam={onSelectTeam}
+            />
           )}
 
           {/* Phase: SELECT_QUESTION (auto-starts immediately without any confirm button) */}
@@ -401,7 +407,7 @@ export function GamePanel({ state, self, adminMode, actions }) {
   );
 }
 
-function FinalMysteryContent({ state, self, adminMode, actions }) {
+function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) {
   const fm = state.finalMystery;
   const isRegistration = fm?.subphase === "REGISTRATION";
   const activeTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
@@ -409,6 +415,7 @@ function FinalMysteryContent({ state, self, adminMode, actions }) {
   const isRegistered = fm?.registeredTeamIds?.includes(effectiveTeam?.id);
   const hasAnswered = fm?.answeredTeamIds?.includes(effectiveTeam?.id);
   const tokens = state.teams.find((t) => t.id === effectiveTeam?.id)?.guessTokens ?? effectiveTeam?.guessTokens ?? 0;
+  const connectedTeams = state.teams.filter((t) => t.isConnected);
 
   return (
     <div className="final-right-content">
@@ -418,7 +425,12 @@ function FinalMysteryContent({ state, self, adminMode, actions }) {
           : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
       </span>
 
-      <div className="final-right-notice">
+      <div className="final-right-notice final-notice-pulse">
+        <div className="final-notice-pointer">
+          <span className="notice-sparkle">✦</span>
+          <span className="notice-pointer-text">CẤP +1 LƯỢT ĐOÁN</span>
+          <span className="notice-pointer-arrow">← ⚡</span>
+        </div>
         <b>Chưa có đội nào đoán đúng nhân vật.</b>
         <p>
           {fm?.grantedFreeToken
@@ -435,31 +447,100 @@ function FinalMysteryContent({ state, self, adminMode, actions }) {
       {isRegistration ? (
         <div className="final-right-registration">
           {adminMode ? (
-            /* ADMIN VIEW: ONLY SHOW REGISTRATION QUEUE IN CHRONOLOGICAL ORDER */
-            <div className="final-admin-registration-box">
-              <div className="final-queue-header">
-                <strong>HÀNG ĐỢI ĐĂNG KÝ THEO THỨ TỰ</strong>
-                <span>{fm?.registeredTeamIds?.length || 0} ĐỘI</span>
-              </div>
-              {fm?.registeredTeamIds?.length > 0 ? (
-                <ol className="final-registration-list">
-                  {fm.registeredTeamIds.map((id, index) => {
-                    const t = state.teams.find((team) => team.id === id);
-                    return (
-                      <li key={id} className="final-registration-item">
-                        <span className="order-badge">#{index + 1}</span>
-                        <span className="team-name">{t?.name || id}</span>
-                        <span className="status-badge">ĐÃ XẾP HÀNG</span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              ) : (
-                <div className="final-queue-empty">
-                  ⏳ Đang chờ các đội bấm đăng ký trên thiết bị của họ…
+            /* ADMIN VIEW: ACTION BOX FOR SELECTED TEAM + ORDERED REGISTRATION QUEUE */
+            <>
+              <div className="final-admin-action-card">
+                <div className="final-admin-action-header">
+                  <div className="final-admin-action-team-info">
+                    <span className="final-admin-team-label">CHỌN THAY CHO:</span>
+                    <strong className="final-admin-team-title">
+                      {effectiveTeam?.name || "Chọn đội ở cột bên trái"}
+                    </strong>
+                  </div>
+                  {effectiveTeam && (
+                    <span className="final-admin-token-badge">
+                      <i>⚡</i> {tokens} lượt
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {connectedTeams.length > 1 && (
+                  <div className="final-admin-team-chips">
+                    {connectedTeams.map((t) => {
+                      const isSelected = t.id === effectiveTeam?.id;
+                      const isTeamRegistered = fm?.registeredTeamIds?.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          className={`final-admin-chip ${isSelected ? "selected" : ""} ${isTeamRegistered ? "registered" : ""}`}
+                          onClick={() => onSelectTeam && onSelectTeam(t.id)}
+                          title={`Nhấn để chọn ${t.name}`}
+                        >
+                          {t.name}
+                          {isTeamRegistered && <span className="chip-badge">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="final-admin-action-body">
+                  {effectiveTeam && isRegistered ? (
+                    <div className="final-right-registered admin-action-row">
+                      <span>✓ {effectiveTeam.name} đã nằm trong hàng đợi.</span>
+                      <button
+                        type="button"
+                        onClick={() => actions.cancelGuess(effectiveTeam.id)}
+                      >
+                        Hủy đăng ký thay
+                      </button>
+                    </div>
+                  ) : effectiveTeam && tokens > 0 ? (
+                    <button
+                      type="button"
+                      className="final-register-button admin-action-btn"
+                      onClick={() => actions.registerFinalMystery(effectiveTeam.id)}
+                    >
+                      Đăng ký thay cho {effectiveTeam.name} — dùng 1 lượt <span>→</span>
+                    </button>
+                  ) : effectiveTeam ? (
+                    <div className="final-right-unavailable">
+                      {effectiveTeam.name} không còn lượt dự đoán để đăng ký.
+                    </div>
+                  ) : (
+                    <div className="final-right-unavailable">
+                      Vui lòng chọn một đội ở danh sách bên trái.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="final-admin-registration-box">
+                <div className="final-queue-header">
+                  <strong>HÀNG ĐỢI ĐĂNG KÝ THEO THỨ TỰ</strong>
+                  <span>{fm?.registeredTeamIds?.length || 0} ĐỘI</span>
+                </div>
+                {fm?.registeredTeamIds?.length > 0 ? (
+                  <ol className="final-registration-list">
+                    {fm.registeredTeamIds.map((id, index) => {
+                      const t = state.teams.find((team) => team.id === id);
+                      return (
+                        <li key={id} className="final-registration-item">
+                          <span className="order-badge">#{index + 1}</span>
+                          <span className="team-name">{t?.name || id}</span>
+                          <span className="status-badge">ĐÃ XẾP HÀNG</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                ) : (
+                  <div className="final-queue-empty">
+                    ⏳ Đang chờ các đội bấm đăng ký trên thiết bị của họ…
+                  </div>
+                )}
+              </div>
+            </>
           ) : isRegistered ? (
             <div className="final-right-registered">
               <span>✓ Đội bạn đã đăng ký trả lời.</span>

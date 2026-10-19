@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Brand } from "../components/Brand.jsx";
 import { TeamSidebar } from "../components/TeamSidebar.jsx";
 import { PuzzleBoard } from "../components/PuzzleBoard.jsx";
@@ -5,9 +6,15 @@ import { GamePanel } from "../components/GamePanel.jsx";
 import { AdminControls } from "../components/AdminControls.jsx";
 
 export function GamePage({ state, team, adminMode, connected, error, actions }) {
+  const [adminSelectedTeamId, setAdminSelectedTeamId] = useState(null);
+
   const fallbackTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
-  const liveTeam = (team && state.teams.find((item) => item.id === team.id || (team.name && item.name.toLowerCase() === team.name.toLowerCase()))) || team || (adminMode ? fallbackTeam : null);
+  const selectedAdminTeam = adminMode ? state.teams.find((item) => item.id === adminSelectedTeamId) : null;
+  const liveTeam = (team && state.teams.find((item) => item.id === team.id || (team.name && item.name.toLowerCase() === team.name.toLowerCase())))
+    || team
+    || (adminMode ? (selectedAdminTeam || fallbackTeam) : null);
   const queueItem = state.guessQueue?.find((item) => item.teamId === liveTeam?.id);
+  const isFinalMystery = state.phase === "FINAL_MYSTERY";
 
   if (state.phase === "FINISHED") {
     return <Winner state={state} actions={actions} adminMode={adminMode} />;
@@ -18,7 +25,7 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
       {/* Top Header matching Figma & user screenshot */}
       <header className="game-top-header">
         <Brand />
-        <div className="figma-token-card">
+        <div className={`figma-token-card ${isFinalMystery ? "final-token-pulse" : ""}`}>
           <span className="figma-token-icon">
             <img src="/figma/guess-token.svg" alt="" />
           </span>
@@ -38,6 +45,10 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
           currentTeamId={state.currentTeamId}
           selfId={liveTeam?.id}
           guessQueue={state.guessQueue}
+          adminMode={adminMode}
+          selectedTeamId={adminMode ? (adminSelectedTeamId || liveTeam?.id) : null}
+          onSelectTeam={setAdminSelectedTeamId}
+          isFinalMystery={isFinalMystery}
         />
 
         <PuzzleBoard
@@ -54,6 +65,7 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
           self={liveTeam}
           adminMode={adminMode}
           actions={actions}
+          onSelectTeam={setAdminSelectedTeamId}
         />
       </div>
 
