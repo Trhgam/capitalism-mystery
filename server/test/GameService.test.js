@@ -94,15 +94,22 @@ describe("GameService", () => {
     const second = game.joinTeam("Team 2").team;
     game.getTeam(second.id).guessTokens = 1;
     game.start();
-    expect(() => game.requestGuess(second.id)).toThrow("sau khi câu hỏi được trả lời đúng");
+    expect(() => game.requestGuess(second.id)).toThrow("sau khi câu hỏi kết thúc");
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, (source.correctAnswer + 1) % 4);
 
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
+    expect(game.state.lastResult.isCorrect).toBe(false);
+
+    // Team 2 has 1 token and must be allowed to request guess even though Team 1 answered incorrectly!
+    expect(() => game.requestGuess(second.id)).not.toThrow();
+    expect(game.state.guessQueue).toHaveLength(1);
+    expect(game.state.guessQueue[0].teamId).toBe(second.id);
+
     game.advanceAfterAnswerResult();
 
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
-    expect(game.state.guessQueue).toHaveLength(0);
+    expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
+    expect(game.state.guessQueue[0].teamId).toBe(second.id);
   });
 
   it("opens Guess Phase after a correct answer only when the queue has a team", () => {

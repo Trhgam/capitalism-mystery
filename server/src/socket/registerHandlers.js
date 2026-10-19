@@ -7,7 +7,14 @@ const joinSchema = z.object({
 const tokenSchema = z.object({ token: z.string().min(10) });
 const answerSchema = z.object({ optionIndex: z.number().int().min(0).max(3) });
 const guessSchema = z.object({ answer: z.string() });
-const nextSchema = z.object({ teamId: z.string().uuid() });
+const nextSchema = z.object({
+  teamId: z.string().uuid().optional(),
+  nextTeamId: z.string().uuid().optional(),
+}).refine((data) => data.nextTeamId || data.teamId, {
+  message: "Thiếu ID đội tiếp theo.",
+}).transform((data) => ({
+  teamId: (data.nextTeamId || data.teamId),
+}));
 const ackError = (ack, error) => ack?.({ ok: false, error: error instanceof z.ZodError ? "Dữ liệu gửi lên không hợp lệ." : error.message });
 
 export function registerHandlers(io, socket, game, config) {
@@ -45,11 +52,22 @@ export function registerHandlers(io, socket, game, config) {
     return { authenticated: true };
   }));
 
-  const resolveActorTeamId = (payload) => {
-    const candidateId = typeof payload?.teamId === "string" ? payload.teamId : null;
-    const resolved = candidateId || teamId || (isAdmin ? (game.state.currentTeamId || game.state.teams.find((t) => t.isConnected)?.id || game.state.teams[0]?.id) : null);
-    if (!resolved) throw new Error("Cần tham gia đội trước.");
-    return resolved;
+  const resolveActorTeamId = (payload, options = {}) => {
+    if (teamId && !isAdmin) return teamId;
+    if (isAdmin) {
+      if (typeof payload?.actorTeamId === "string") return payload.actorTeamId;
+      if (!options.excludeTeamIdKey && typeof payload?.teamId === "string") return payload.teamId;
+      return (
+        game.state.currentTeamId ||
+        game.state.teams.find((t) => t.isConnected)?.id ||
+        game.state.teams[0]?.id ||
+        null
+      );
+    }
+    if (teamId) return teamId;
+    if (typeof payload?.actorTeamId === "string") return payload.actorTeamId;
+    if (!options.excludeTeamIdKey && typeof payload?.teamId === "string") return payload.teamId;
+    throw new Error("Cần tham gia đội trước.");
   };
 
   socket.on("game:start", (_, ack) => reply(ack, () => { requireAdmin(); game.start(); return {}; }));
@@ -77,7 +95,13 @@ export function registerHandlers(io, socket, game, config) {
   socket.on("guess:save", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
   socket.on("guess:skip", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
   socket.on("guess:submit", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); const data = guessSchema.parse(payload); return game.submitGuess(actorId, data.answer); }));
-  socket.on("turn:select-next", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); const data = nextSchema.parse(payload); game.selectNextTeam(actorId, data.teamId); return {}; }));
+  socket.on("turn:select-next", (payload, ack) => reply(ack, () => {
+    const actorId = resolveActorTeamId(payload, { excludeTeamIdKey: true });
+    const targetTeamId = payload?.nextTeamId || payload?.teamId;
+    const data = nextSchema.parse({ ...payload, teamId: targetTeamId });
+    game.selectNextTeam(actorId, data.teamId);
+    return {};
+  }));
   socket.on("game:pause", (_, ack) => reply(ack, () => { requireAdmin(); game.pause(); return {}; }));
   socket.on("game:resume", (_, ack) => reply(ack, () => { requireAdmin(); game.resume(); return {}; }));
   socket.on("game:reset", (_, ack) => reply(ack, () => { requireAdmin(); game.reset(); return {}; }));

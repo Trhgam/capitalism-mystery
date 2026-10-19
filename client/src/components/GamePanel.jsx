@@ -3,10 +3,14 @@ import { Countdown } from "./Countdown.jsx";
 
 export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
   const [guess, setGuess] = useState("");
+  const liveSelf =
+    state.teams.find((t) => t.id === self?.id || (self?.name && t.name.toLowerCase() === self.name.toLowerCase())) ||
+    self;
   const activeTeam = state.teams.find((item) => item.id === state.currentTeamId);
-  const isActive = self?.id === state.currentTeamId;
-  const queueItem = state.guessQueue?.find((item) => item.teamId === self?.id);
-  const hasTokens = (self?.guessTokens || 0) > 0;
+  const isActive = liveSelf?.id === state.currentTeamId;
+  const queueItem = state.guessQueue?.find((item) => item.teamId === liveSelf?.id);
+  const tokens = liveSelf?.guessTokens ?? self?.guessTokens ?? 0;
+  const hasTokens = tokens > 0;
   const isWaitingInQueue = queueItem?.status === "waiting";
 
   useEffect(() => {
@@ -189,7 +193,7 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                         </p>
                         {hasTokens ? (
                           <p style={{ margin: "0", color: "#5a5343" }}>
-                            Đội bạn vẫn còn <strong>{self?.guessTokens} lượt dự đoán</strong>. Hãy bấm nút bên dưới để tiếp tục!
+                            Đội bạn vẫn còn <strong>{tokens} lượt dự đoán</strong>. Hãy bấm nút bên dưới để tiếp tục!
                           </p>
                         ) : (
                           <p style={{ margin: "0", color: "#777486" }}>
@@ -198,7 +202,7 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                         )}
                       </div>
                       <span className="vintage-status-tag">
-                        {hasTokens ? `CÒN ${self?.guessTokens} LƯỢT ĐOÁN` : "CHUYỂN SANG ĐỘI TIẾP THEO"}
+                        {hasTokens ? `CÒN ${tokens} LƯỢT ĐOÁN` : "CHUYỂN SANG ĐỘI TIẾP THEO"}
                       </span>
                     </div>
 
@@ -206,12 +210,12 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                       <div className="vintage-retry-action-box">
                         <div className="vintage-retry-info">
                           <span className="retry-lightning">⚡</span>
-                          <span>Đội bạn còn <strong>{self?.guessTokens} lượt đoán</strong></span>
+                          <span>Đội bạn còn <strong>{tokens} lượt đoán</strong></span>
                         </div>
                         <button
                           type="button"
                           className="vintage-retry-btn"
-                          onClick={() => actions.requestGuess()}
+                          onClick={() => actions.requestGuess(liveSelf?.id)}
                         >
                           Dự đoán tiếp ngay <span>→</span>
                         </button>
@@ -385,7 +389,7 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
                 className="puzzle-save-btn"
                 onClick={() => {
                   if (!state.lastResult?.isCorrect) return;
-                  actions.saveGuess();
+                  actions.saveGuess(liveSelf?.id);
                 }}
                 disabled={!state.lastResult?.isCorrect}
                 title={
@@ -399,21 +403,21 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
               <button
                 type="button"
                 className="puzzle-guess-btn"
-                onClick={() => actions.requestGuess()}
+                onClick={() => actions.requestGuess(liveSelf?.id)}
               >
                 Dự đoán ngay <span>→</span>
               </button>
             </>
           ) : isWaitingInQueue ? (
             <>
-              <button type="button" className="puzzle-save-btn" onClick={() => actions.cancelGuess()}>Hủy đăng ký</button>
+              <button type="button" className="puzzle-save-btn" onClick={() => actions.cancelGuess(liveSelf?.id)}>Hủy đăng ký</button>
               <button type="button" className="puzzle-guess-btn queued" disabled>✓ Đã vào hàng đợi</button>
             </>
           ) : (
             <button
               type="button"
               className={`puzzle-guess-btn ${queueItem?.status === "incorrect" && hasTokens ? "retry" : ""}`}
-              onClick={() => actions.requestGuess()}
+              onClick={() => actions.requestGuess(liveSelf?.id)}
               disabled={!canRequestGuess}
               title={
                 !hasTokens
@@ -445,12 +449,7 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
 
   return (
     <div className="final-right-content">
-      <span className="final-right-phase">
-        {isRegistration
-          ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 30} GIÂY`
-          : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
-      </span>
-
+      {/* Floating Notice at the Very Top */}
       <div className="final-right-notice final-notice-pulse">
         <div className="final-notice-pointer">
           <span className="notice-sparkle">✦</span>
@@ -464,6 +463,12 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
             : "Các đội có lượt dự đoán có thể đăng ký tham gia vòng quyết định."}
         </p>
       </div>
+
+      <span className="final-right-phase">
+        {isRegistration
+          ? `ĐỌC GỢI Ý & ĐĂNG KÝ — ${fm?.registrationSeconds || 30} GIÂY`
+          : `TRẢ LỜI CÂU HỎI — ${fm?.answerSeconds || 20} GIÂY`}
+      </span>
 
 
       {isRegistration ? (

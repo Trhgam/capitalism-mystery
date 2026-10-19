@@ -97,7 +97,7 @@ export function useGame({ adminMode }) {
       cancelGuess: (teamId) => run("guess:cancel", { teamId: cleanId(teamId) }),
       saveGuess: (teamId) => run("guess:save", { teamId: cleanId(teamId) }),
       submitGuess: (answer, teamId) => run("guess:submit", { answer, teamId: cleanId(teamId) }),
-      selectNext: (teamId) => run("turn:select-next", { teamId: cleanId(teamId) }),
+      selectNext: (teamId) => run("turn:select-next", { nextTeamId: cleanId(teamId), teamId: cleanId(teamId) }),
       pause: () => run("game:pause"),
       resume: () => run("game:resume"),
       reset: () => run("game:reset"),

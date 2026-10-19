@@ -222,7 +222,9 @@ export class GameService extends EventEmitter {
 
     // If answer is correct or if any connected team has tokens to use, open the full decision window.
     const anyHasTokens = this.state.teams.some((t) => t.isConnected && t.guessTokens > 0);
-    const resultSeconds = (isCorrect || anyHasTokens) ? this.config.guessRegistrationSeconds : 3;
+    const resultSeconds = (isCorrect || anyHasTokens)
+      ? this.config.guessRegistrationSeconds
+      : (this.config.answerWrongResultSeconds || 3);
     this.state.deadline = Date.now() + resultSeconds * 1000;
     this.commit("question.result", team.id, { isCorrect, timedOut });
     return this.state.lastResult;
@@ -231,7 +233,7 @@ export class GameService extends EventEmitter {
   requestGuess(teamId) {
     const team = this.requireTeam(teamId);
     if (![PHASES.ANSWER_RESULT, PHASES.GUESS_PHASE, PHASES.FINAL_MYSTERY, PHASES.SELECT_NEXT_TEAM].includes(this.state.phase)) {
-      throw new Error("Chỉ đăng ký dự đoán sau khi câu hỏi được trả lời đúng hoặc khi câu hỏi kết thúc.");
+      throw new Error("Chỉ đăng ký dự đoán sau khi câu hỏi kết thúc.");
     }
     if (this.state.phase === PHASES.FINAL_MYSTERY) {
       return this.registerFinalMystery(teamId);
@@ -531,7 +533,7 @@ export class GameService extends EventEmitter {
     }
     // Guess is INCORRECT:
     // Show feedback for 3.5s so team and all players see the incorrect guess before advancing!
-    const feedbackSeconds = 3.5;
+    const feedbackSeconds = this.config.guessFeedbackSeconds || 3.5;
     this.state.deadline = Date.now() + feedbackSeconds * 1000;
     this.commit("guess.submit", teamId, { isCorrect: false, lastGuessResult: this.state.lastGuessResult });
     return { isCorrect: false };

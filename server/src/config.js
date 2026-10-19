@@ -12,6 +12,8 @@ export const config = {
   answerSeconds: numberFromEnv("ANSWER_SECONDS", 20),
   guessRegistrationSeconds: numberFromEnv("GUESS_REGISTRATION_SECONDS", 12),
   guessSeconds: numberFromEnv("GUESS_SECONDS", 10),
+  guessFeedbackSeconds: numberFromEnv("GUESS_FEEDBACK_SECONDS", 3.5),
+  answerWrongResultSeconds: numberFromEnv("ANSWER_WRONG_RESULT_SECONDS", 3),
   finalGuessSeconds: numberFromEnv("FINAL_GUESS_SECONDS", 20),
   finalRegistrationSeconds: numberFromEnv("FINAL_REGISTRATION_SECONDS", 30),
   finalAnswerSeconds: numberFromEnv("FINAL_ANSWER_SECONDS", 20),

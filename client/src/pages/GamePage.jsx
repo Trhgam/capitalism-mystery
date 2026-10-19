@@ -10,9 +10,12 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
 
   const fallbackTeam = state.teams.find((item) => item.id === state.currentTeamId) || state.teams.find((item) => item.isConnected) || state.teams[0];
   const selectedAdminTeam = adminMode ? state.teams.find((item) => item.id === adminSelectedTeamId) : null;
-  const liveTeam = (team && state.teams.find((item) => item.id === team.id || (team.name && item.name.toLowerCase() === team.name.toLowerCase())))
-    || team
-    || (adminMode ? (selectedAdminTeam || fallbackTeam) : null);
+  const liveTeam = (() => {
+    if (adminMode) return selectedAdminTeam || fallbackTeam;
+    if (!team) return null;
+    const match = state.teams.find((item) => item.id === team.id || (team.name && item.name.toLowerCase() === team.name.toLowerCase()));
+    return match ? { ...team, ...match } : team;
+  })();
   const queueItem = state.guessQueue?.find((item) => item.teamId === liveTeam?.id);
   const isFinalMystery = state.phase === "FINAL_MYSTERY";
 
