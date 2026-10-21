@@ -9,6 +9,10 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
     ? 12
     : pieces.filter((piece) => piece.status === "revealed").length;
   const progressPercent = Math.min(100, Math.round((revealedCount / 12) * 100));
+  const activePieceIndex = state?.phase === "ANSWERING" ? state.currentPieceIndex : null;
+  const orderedJigsawLayout = activePieceIndex == null
+    ? jigsawLayout
+    : [...jigsawLayout].sort((a, b) => Number(a.index === activePieceIndex) - Number(b.index === activePieceIndex));
 
   const isFinalMystery = state?.phase === "FINAL_MYSTERY";
   const fm = state?.finalMystery;
@@ -141,12 +145,13 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
               viewBox="0 0 800 600"
               preserveAspectRatio="none"
             >
-              {jigsawLayout.map((jigsaw) => {
+              {orderedJigsawLayout.map((jigsaw) => {
                 const pieceState = pieces.find((p) => p.index === jigsaw.index) || {
                   status: "hidden",
                 };
                 const isRevealed = finished || pieceState.status === "revealed";
                 const isLocked = !finished && pieceState.status === "locked";
+                const isActive = !finished && jigsaw.index === activePieceIndex;
 
                 if (isRevealed) {
                   // When revealed, piece is transparent so image shows
@@ -156,7 +161,7 @@ export function PuzzleBoard({ pieces, finished, veiled = false, state, self, act
                 return (
                   <g
                     key={jigsaw.index}
-                    className={`jigsaw-piece ${isLocked ? "locked" : "hidden"}`}
+                    className={`jigsaw-piece ${isLocked ? "locked" : "hidden"} ${isActive ? "active" : ""}`}
                   >
                     <path
                       d={jigsaw.path}

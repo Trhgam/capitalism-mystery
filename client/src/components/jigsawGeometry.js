@@ -1,118 +1,125 @@
 /**
- * Mathematical Jigsaw Puzzle Generator for 4x3 Grid (800x600)
- * Recreates the exact interlocking jigsaw tab layout from the reference design.
+ * Seeded irregular jigsaw generator for a 4 × 3 board (800 × 600).
+ * Shared vertices and edge specifications keep neighbouring pieces perfectly
+ * interlocked while avoiding the appearance of twelve identical rectangles.
  */
 
 const COLS = 4;
 const ROWS = 3;
 const W = 800;
 const H = 600;
-const cw = W / COLS; // 200
-const rh = H / ROWS; // 200
+const cw = W / COLS;
+const rh = H / ROWS;
 
-// Vertical boundaries between columns (3 boundaries x 3 rows)
-// +1: tab points to the right (+x)
-// -1: tab points to the left (-x)
-const vEdges = [
-  // between col 0 and col 1 (x = 200)
-  [-1, 1, -1],
-  // between col 1 and col 2 (x = 400)
-  [1, 1, 1],
-  // between col 2 and col 3 (x = 600)
-  [1, -1, 1],
-];
+function seededRandom(seed = 0x51a7f00d) {
+  let value = seed >>> 0;
+  return () => {
+    value += 0x6d2b79f5;
+    let result = value;
+    result = Math.imul(result ^ (result >>> 15), result | 1);
+    result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
+    return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-// Horizontal boundaries between rows (4 columns x 2 boundaries)
-// +1: tab points DOWN (+y)
-// -1: tab points UP (-y)
-const hEdges = [
-  // col 0
-  [-1, 1],
-  // col 1
-  [1, 1],
-  // col 2
-  [1, -1],
-  // col 3
-  [-1, 1],
-];
+function createEdge(random) {
+  return {
+    dir: random() > 0.5 ? 1 : -1,
+    depth: 22 + random() * 21,
+    span: 0.14 + random() * 0.08,
+    crown: 0.07 + random() * 0.035,
+  };
+}
 
-function edgeSegment(x1, y1, x2, y2, dir) {
-  if (dir === 0) return `L ${x2.toFixed(1)} ${y2.toFixed(1)}`;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
+function edgeSegment(start, end, edge) {
+  if (!edge) return `L ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
   const len = Math.hypot(dx, dy);
   const ux = dx / len;
   const uy = dy / len;
-  const nx = -uy * dir;
-  const ny = ux * dir;
+  const nx = -uy * edge.dir;
+  const ny = ux * edge.dir;
+  const point = (along, normal = 0) => ({
+    x: start.x + ux * along * len + nx * normal,
+    y: start.y + uy * along * len + ny * normal,
+  });
+  const format = (pointValue) => `${pointValue.x.toFixed(1)} ${pointValue.y.toFixed(1)}`;
 
-  const pt = (u, n) => {
-    const px = x1 + ux * (u * len) + nx * n;
-    const py = y1 + uy * (u * len) + ny * n;
-    return `${px.toFixed(1)} ${py.toFixed(1)}`;
-  };
+  const outer = edge.span;
+  const inner = edge.crown;
+  const depth = edge.depth;
+  const a = point(0.5 - outer);
+  const b = point(0.5 - inner, depth * 0.9);
+  const c = point(0.5, depth);
+  const d = point(0.5 + inner, depth * 0.9);
+  const e = point(0.5 + outer);
 
-  const tabH = 30; // height of jigsaw tab
-  const pA = pt(0.38, 0);
-  const c1 = pt(0.37, 2);
-  const c2 = pt(0.35, 12);
-  const pB = pt(0.32, 22);
+  return [
+    `L ${format(a)}`,
+    `C ${format(point(0.5 - outer * 0.92, depth * 0.12))}, ${format(point(0.5 - outer * 0.8, depth * 0.7))}, ${format(b)}`,
+    `C ${format(point(0.5 - inner * 0.7, depth))}, ${format(point(0.5 - inner * 0.32, depth))}, ${format(c)}`,
+    `C ${format(point(0.5 + inner * 0.32, depth))}, ${format(point(0.5 + inner * 0.7, depth))}, ${format(d)}`,
+    `C ${format(point(0.5 + outer * 0.8, depth * 0.7))}, ${format(point(0.5 + outer * 0.92, depth * 0.12))}, ${format(e)}`,
+    `L ${format(end)}`,
+  ].join(" ");
+}
 
-  const c3 = pt(0.30, tabH);
-  const c4 = pt(0.40, tabH + 2);
-  const pC = pt(0.50, tabH + 2);
-
-  const c5 = pt(0.60, tabH + 2);
-  const c6 = pt(0.70, tabH);
-  const pD = pt(0.68, 22);
-
-  const c7 = pt(0.65, 12);
-  const c8 = pt(0.63, 2);
-  const pE = pt(0.62, 0);
-
-  const pEnd = `${x2.toFixed(1)} ${y2.toFixed(1)}`;
-
-  return `L ${pA} C ${c1}, ${c2}, ${pB} C ${c3}, ${c4}, ${pC} C ${c5}, ${c6}, ${pD} C ${c7}, ${c8}, ${pE} L ${pEnd}`;
+function reverseEdge(edge) {
+  return edge ? { ...edge, dir: -edge.dir } : null;
 }
 
 export function getJigsawPieces() {
+  const random = seededRandom();
+  const vertices = Array.from({ length: ROWS + 1 }, (_, row) =>
+    Array.from({ length: COLS + 1 }, (_, col) => ({
+      x: col * cw + (col > 0 && col < COLS ? (random() - 0.5) * 42 : 0),
+      y: row * rh + (row > 0 && row < ROWS ? (random() - 0.5) * 38 : 0),
+    })),
+  );
+
+  const verticalEdges = Array.from({ length: ROWS }, () =>
+    Array.from({ length: COLS - 1 }, () => createEdge(random)),
+  );
+  const horizontalEdges = Array.from({ length: ROWS - 1 }, () =>
+    Array.from({ length: COLS }, () => createEdge(random)),
+  );
+
   const pieces = [];
+  for (let row = 0; row < ROWS; row += 1) {
+    for (let col = 0; col < COLS; col += 1) {
+      const index = row * COLS + col;
+      const topLeft = vertices[row][col];
+      const topRight = vertices[row][col + 1];
+      const bottomRight = vertices[row + 1][col + 1];
+      const bottomLeft = vertices[row + 1][col];
+      const top = row === 0 ? null : horizontalEdges[row - 1][col];
+      const right = col === COLS - 1 ? null : verticalEdges[row][col];
+      const bottom = row === ROWS - 1 ? null : reverseEdge(horizontalEdges[row][col]);
+      const left = col === 0 ? null : reverseEdge(verticalEdges[row][col - 1]);
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const index = r * COLS + c;
-      const x0 = c * cw;
-      const x1 = (c + 1) * cw;
-      const y0 = r * rh;
-      const y1 = (r + 1) * rh;
+      const path = [
+        `M ${topLeft.x.toFixed(1)} ${topLeft.y.toFixed(1)}`,
+        edgeSegment(topLeft, topRight, top),
+        edgeSegment(topRight, bottomRight, right),
+        edgeSegment(bottomRight, bottomLeft, bottom),
+        edgeSegment(bottomLeft, topLeft, left),
+        "Z",
+      ].join(" ");
 
-      // 1. Top edge: (x0, y0) -> (x1, y0)
-      const topDir = r === 0 ? 0 : hEdges[c][r - 1];
-
-      // 2. Right edge: (x1, y0) -> (x1, y1)
-      const rightDir = c === COLS - 1 ? 0 : -vEdges[c][r];
-
-      // 3. Bottom edge: (x1, y1) -> (x0, y1)
-      const bottomDir = r === ROWS - 1 ? 0 : -hEdges[c][r];
-
-      // 4. Left edge: (x0, y1) -> (x0, y0)
-      const leftDir = c === 0 ? 0 : vEdges[c - 1][r];
-
-      let path = `M ${x0.toFixed(1)} ${y0.toFixed(1)} `;
-      path += edgeSegment(x0, y0, x1, y0, topDir) + " ";
-      path += edgeSegment(x1, y0, x1, y1, rightDir) + " ";
-      path += edgeSegment(x1, y1, x0, y1, bottomDir) + " ";
-      path += edgeSegment(x0, y1, x0, y0, leftDir) + " Z";
+      const centerX = (topLeft.x + topRight.x + bottomRight.x + bottomLeft.x) / 4;
+      const centerY = (topLeft.y + topRight.y + bottomRight.y + bottomLeft.y) / 4;
+      const minX = Math.min(topLeft.x, topRight.x, bottomRight.x, bottomLeft.x);
+      const minY = Math.min(topLeft.y, topRight.y, bottomRight.y, bottomLeft.y);
 
       pieces.push({
         index,
         displayNumber: String(index + 1).padStart(2, "0"),
-        col: c,
-        row: r,
-        centerX: x0 + cw / 2,
-        centerY: y0 + rh / 2,
-        labelX: x0 + 16,
-        labelY: y0 + 32,
+        centerX,
+        centerY,
+        labelX: minX + 16,
+        labelY: minY + 31,
         path,
       });
     }

@@ -71,6 +71,21 @@ describe("GameService", () => {
     expect(question).toBeTruthy();
   });
 
+  it("keeps portrait-defining pieces 02, 03, 06 and 07 until the final four questions", () => {
+    const game = makeGame();
+    const team = game.joinTeam("Team 1").team;
+    const expectedOrder = [0, 3, 4, 7, 8, 9, 10, 11, 1, 2, 5, 6];
+    game.start();
+
+    for (let turn = 0; turn < expectedOrder.length; turn += 1) {
+      expect(game.state.currentPieceIndex).toBe(expectedOrder[turn]);
+      const question = questions.find((item) => item.id === game.state.currentQuestionId);
+      game.answer(team.id, (question.correctAnswer + 1) % 4);
+      expect(game.state.lastResult.pieceIndex).toBe(expectedOrder[turn]);
+      if (turn < expectedOrder.length - 1) game.advanceAfterAnswerResult();
+    }
+  });
+
   it("requires queue membership and consumes a token on submit", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;

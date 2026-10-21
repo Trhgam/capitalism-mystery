@@ -25,6 +25,9 @@ export const FINAL_MYSTERY_QUESTION = Object.freeze({
 const cleanName = (value) => value.trim().replace(/\s+/g, " ");
 export const normalizeGuess = (value) => cleanName(value).toLocaleLowerCase("vi").replace(/[.]/g, "");
 export const FIXED_TEAM_NAMES = Object.freeze(["Team 1", "Team 2", "Team 3", "Team 5", "Team 6", "Team 7", "Team 8"]);
+// Reveal the outside silhouette first. Pieces 02, 03, 06 and 07 cover the
+// economist's face/body, so they intentionally remain hidden until the end.
+export const PUZZLE_REVEAL_ORDER = Object.freeze([0, 3, 4, 7, 8, 9, 10, 11, 1, 2, 5, 6]);
 
 const makeInitialState = () => ({
   id: randomUUID(),
@@ -35,6 +38,7 @@ const makeInitialState = () => ({
   teams: [],
   currentTeamId: null,
   currentQuestionId: null,
+  currentPieceIndex: null,
   usedQuestionIds: [],
   lastResult: null,
   puzzle: Array.from({ length: 12 }, (_, index) => ({ index, status: "hidden", resolvedByTeamId: null })),
@@ -173,7 +177,9 @@ export class GameService extends EventEmitter {
     const available = questions.filter((item) => !this.state.usedQuestionIds.includes(item.id));
     if (!available.length) throw new Error("Ngân hàng câu hỏi đã hết.");
     const question = available[Math.floor(Math.random() * available.length)];
+    const nextPieceIndex = PUZZLE_REVEAL_ORDER.find((index) => this.state.puzzle[index]?.status === "hidden");
     this.state.currentQuestionId = question.id;
+    this.state.currentPieceIndex = nextPieceIndex ?? null;
     this.state.usedQuestionIds.push(question.id);
     this.state.phase = PHASES.ANSWERING;
     this.state.lastResult = null;
@@ -211,7 +217,8 @@ export class GameService extends EventEmitter {
     const question = questions.find((item) => item.id === this.state.currentQuestionId);
     const team = this.requireTeam(this.state.currentTeamId);
     const isCorrect = !timedOut && optionIndex === question.correctAnswer;
-    const piece = this.state.puzzle.find((item) => item.status === "hidden");
+    const piece = this.state.puzzle.find((item) => item.index === this.state.currentPieceIndex && item.status === "hidden")
+      || this.state.puzzle.find((item) => item.status === "hidden");
     if (piece) {
       piece.status = isCorrect ? "revealed" : "locked";
       piece.resolvedByTeamId = team.id;

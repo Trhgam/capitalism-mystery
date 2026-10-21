@@ -525,6 +525,33 @@ button:disabled { cursor: not-allowed; opacity: .48; }
   stroke: #20222f;
 }
 
+.jigsaw-piece.active {
+  filter: drop-shadow(0 0 5px rgba(255, 211, 91, .95)) drop-shadow(0 0 12px rgba(255, 187, 55, .55));
+}
+
+.jigsaw-piece.active .jigsaw-path {
+  fill: #3a3d50;
+  stroke: #ffd873;
+  stroke-width: 3.2;
+  animation: active-jigsaw-glow 1.35s ease-in-out infinite alternate;
+}
+
+.jigsaw-piece.active .jigsaw-circle {
+  fill: rgba(255, 211, 91, .08);
+  stroke: rgba(255, 222, 132, .95);
+  stroke-width: 2;
+}
+
+.jigsaw-piece.active .jigsaw-label,
+.jigsaw-piece.active .jigsaw-symbol {
+  fill: #ffe59b;
+}
+
+@keyframes active-jigsaw-glow {
+  from { stroke: #e8bd55; stroke-width: 2.2; }
+  to { stroke: #ffe8a6; stroke-width: 4; }
+}
+
 .jigsaw-label {
   font-family: "DM Sans", sans-serif;
   font-size: 15px;
