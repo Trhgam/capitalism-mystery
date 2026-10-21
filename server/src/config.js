@@ -19,4 +19,5 @@ export const config = {
   finalAnswerSeconds: numberFromEnv("FINAL_ANSWER_SECONDS", 20),
   finalFeedbackSeconds: numberFromEnv("FINAL_FEEDBACK_SECONDS", 3),
   finalClueSeconds: numberFromEnv("FINAL_CLUE_SECONDS", 30),
+  antiCheatPauseSeconds: numberFromEnv("ANTI_CHEAT_PAUSE_SECONDS", 5),
 };

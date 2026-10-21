@@ -7,14 +7,9 @@ const joinSchema = z.object({
 const tokenSchema = z.object({ token: z.string().min(10) });
 const answerSchema = z.object({ optionIndex: z.number().int().min(0).max(3) });
 const guessSchema = z.object({ answer: z.string() });
-const nextSchema = z.object({
-  teamId: z.string().uuid().optional(),
-  nextTeamId: z.string().uuid().optional(),
-}).refine((data) => data.nextTeamId || data.teamId, {
-  message: "Thiếu ID đội tiếp theo.",
-}).transform((data) => ({
-  teamId: (data.nextTeamId || data.teamId),
-}));
+const antiCheatSchema = z.object({
+  method: z.enum(["print-screen", "windows-shift-s", "drag-selection", "focus-loss", "unknown"]).default("unknown"),
+});
 const ackError = (ack, error) => ack?.({ ok: false, error: error instanceof z.ZodError ? "Dữ liệu gửi lên không hợp lệ." : error.message });
 
 export function registerHandlers(io, socket, game, config) {
@@ -95,12 +90,10 @@ export function registerHandlers(io, socket, game, config) {
   socket.on("guess:save", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
   socket.on("guess:skip", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); game.saveGuess(actorId); return {}; }));
   socket.on("guess:submit", (payload, ack) => reply(ack, () => { const actorId = resolveActorTeamId(payload); const data = guessSchema.parse(payload); return game.submitGuess(actorId, data.answer); }));
-  socket.on("turn:select-next", (payload, ack) => reply(ack, () => {
-    const actorId = resolveActorTeamId(payload, { excludeTeamIdKey: true });
-    const targetTeamId = payload?.nextTeamId || payload?.teamId;
-    const data = nextSchema.parse({ ...payload, teamId: targetTeamId });
-    game.selectNextTeam(actorId, data.teamId);
-    return {};
+  socket.on("anti-cheat:report", (payload, ack) => reply(ack, () => {
+    requireTeam();
+    const data = antiCheatSchema.parse(payload || {});
+    return game.reportSuspiciousCapture(teamId, data.method);
   }));
   socket.on("game:pause", (_, ack) => reply(ack, () => { requireAdmin(); game.pause(); return {}; }));
   socket.on("game:resume", (_, ack) => reply(ack, () => { requireAdmin(); game.resume(); return {}; }));

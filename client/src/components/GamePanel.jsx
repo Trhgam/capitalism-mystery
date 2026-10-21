@@ -24,8 +24,7 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
     !isWaitingInQueue &&
     (state.phase === "ANSWER_RESULT" ||
       state.phase === "GUESS_PHASE" ||
-      state.phase === "FINAL_MYSTERY" ||
-      state.phase === "SELECT_NEXT_TEAM");
+      state.phase === "FINAL_MYSTERY");
 
   const submitGuess = async (event) => {
     event.preventDefault();
@@ -318,43 +317,15 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
             );
           })()}
 
-          {/* Phase: SELECT_NEXT_TEAM */}
-          {state.phase === "SELECT_NEXT_TEAM" && (
-            <div className="quiz-next-team-state">
-              <h2 className="quiz-question-title">Chọn đội chơi tiếp theo</h2>
-              {isActive ? (
-                <div className="next-team-grid">
-                  {state.teams
-                    .filter(
-                      (team) =>
-                        team.isConnected &&
-                        (team.id !== state.currentTeamId ||
-                          state.teams.filter((item) => item.isConnected).length === 1)
-                    )
-                    .map((team) => (
-                      <button
-                        key={team.id}
-                        type="button"
-                        className="next-team-btn"
-                        onClick={() => actions.selectNext(team.id)}
-                      >
-                        {team.name}
-                      </button>
-                    ))}
-                </div>
-              ) : (
-                <p className="quiz-waiting-text">
-                  {activeTeam?.name || "Đội vừa chơi"} đang chọn đội tiếp theo…
-                </p>
-              )}
-            </div>
-          )}
-
           {/* Phase: PAUSED */}
           {state.phase === "PAUSED" && (
             <div className="quiz-prompt-state">
               <h2 className="quiz-question-title">Trận đấu đang tạm dừng</h2>
-              <p className="quiz-waiting-text">Đồng hồ sẽ tiếp tục khi Giáo viên Resume.</p>
+              <p className="quiz-waiting-text">
+                {state.antiCheatAlert
+                  ? "Hệ thống sẽ tự tiếp tục sau cảnh báo chống gian lận."
+                  : "Đồng hồ sẽ tiếp tục khi Giáo viên Resume."}
+              </p>
             </div>
           )}
         </div>
@@ -363,18 +334,16 @@ export function GamePanel({ state, self, adminMode, actions, onSelectTeam }) {
           <div className="quiz-card-footer">
             <p className="quiz-helper-note">
               {state.phase === "ANSWERING"
-                ? "Đội hiện tại trả lời câu hỏi. Sau đó hệ thống sẽ cho phép chọn đội tiếp theo."
+                ? "Đội hiện tại trả lời câu hỏi. Sau đó hệ thống sẽ tự chọn ngẫu nhiên đội tiếp theo."
                 : state.phase === "ANSWER_RESULT"
                   ? state.lastResult?.isCorrect
                     ? "Đội hiện tại có thể chọn Dự đoán ngay hoặc Lưu lượt đoán cho vòng sau."
                     : hasTokens
                       ? "Trả lời chưa chính xác: Bạn vẫn có thể dùng lượt đoán đã tích lũy bên dưới!"
-                      : "Trả lời sai: hệ thống sẽ chuyển sang chọn đội tiếp theo."
+                      : "Trả lời sai: hệ thống sẽ tự chọn ngẫu nhiên đội tiếp theo."
                   : state.phase === "GUESS_PHASE"
                     ? "Các đội trong hàng đợi có cơ hội đoán tên nhà kinh tế học."
-                    : state.phase === "SELECT_NEXT_TEAM"
-                      ? "Đội vừa chơi đang chọn đội tiếp theo tham gia trả lời câu hỏi."
-                      : "Hệ thống đang chuẩn bị cho vòng tiếp theo."}
+                    : "Hệ thống đang chuẩn bị và random đội cho vòng tiếp theo."}
             </p>
           </div>
         )}
@@ -625,12 +594,14 @@ function FinalMysteryContent({ state, self, adminMode, actions, onSelectTeam }) 
           {showingFeedback ? (
             <div className="final-feedback-stage" role="alert" aria-live="assertive" key={fm.lastAttempt.attemptedAt}>
               <span className="final-feedback-cross">✕</span>
-              <span className="final-feedback-label">KẾT QUẢ LƯỢT DỰ ĐOÁN</span>
-              <h3>Chưa chính xác</h3>
-              <p>
-                <b>{fm.lastAttempt.teamName || state.teams.find((team) => team.id === fm.lastAttempt.teamId)?.name}</b>
-                {" "}đã bị trừ <b>1 lượt dự đoán</b>.
-              </p>
+              <div className="final-feedback-copy">
+                <span className="final-feedback-label">KẾT QUẢ LƯỢT DỰ ĐOÁN</span>
+                <h3>Chưa chính xác</h3>
+                <p>
+                  <b>{fm.lastAttempt.teamName || state.teams.find((team) => team.id === fm.lastAttempt.teamId)?.name}</b>
+                  {" "}đã bị trừ <b>1 lượt dự đoán</b>.
+                </p>
+              </div>
               <strong>⚡ Còn {fm.lastAttempt.remainingTokens} lượt dự đoán</strong>
               <small>
                 {fm.lastAttempt.continues

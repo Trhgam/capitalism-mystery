@@ -14,8 +14,8 @@ function createMockSocket() {
   };
 }
 
-describe("registerHandlers - turn:select-next", () => {
-  it("allows the current active team to pass the turn to another team", async () => {
+describe("registerHandlers - anti-cheat", () => {
+  it("accepts a capture report only from a joined team and pauses the match", async () => {
     const config = {
       adminCode: "SECRET",
       answerSeconds: 20,
@@ -24,23 +24,16 @@ describe("registerHandlers - turn:select-next", () => {
       finalGuessSeconds: 20,
       finalRegistrationSeconds: 20,
       finalAnswerSeconds: 15,
+      antiCheatPauseSeconds: 5,
     };
     const game = new GameService({ config });
 
     const socketTeam1 = createMockSocket();
     registerHandlers({}, socketTeam1, game, config);
 
-    const socketTeam2 = createMockSocket();
-    registerHandlers({}, socketTeam2, game, config);
-
-    // Join teams
     let res1;
     socketTeam1.handlers["team:join"]({ teamNumber: 1 }, (r) => { res1 = r; });
     expect(res1.ok).toBe(true);
-
-    let res2;
-    socketTeam2.handlers["team:join"]({ teamNumber: 2 }, (r) => { res2 = r; });
-    expect(res2.ok).toBe(true);
 
     // Admin socket to start game
     const socketAdmin = createMockSocket();
@@ -54,18 +47,13 @@ describe("registerHandlers - turn:select-next", () => {
     if (!startRes.ok) console.log("startRes failed:", startRes);
     expect(startRes.ok).toBe(true);
 
-    // Force phase to SELECT_NEXT_TEAM for testing
-    game.state.phase = PHASES.SELECT_NEXT_TEAM;
-    const currentTeamId = game.state.currentTeamId;
-    const targetTeam = game.state.teams.find((t) => t.id !== currentTeamId);
+    let reportRes;
+    socketTeam1.handlers["anti-cheat:report"]({ method: "print-screen" }, (r) => { reportRes = r; });
 
-    const activeSocket = currentTeamId === res1.team.id ? socketTeam1 : socketTeam2;
-
-    // Active team selects next team using { teamId: targetTeam.id }
-    let selectRes;
-    activeSocket.handlers["turn:select-next"]({ teamId: targetTeam.id }, (r) => { selectRes = r; });
-
-    expect(selectRes.ok).toBe(true);
-    expect(game.state.currentTeamId).toBe(targetTeam.id);
+    expect(reportRes.ok).toBe(true);
+    expect(reportRes.paused).toBe(true);
+    expect(game.state.phase).toBe(PHASES.PAUSED);
+    expect(game.state.antiCheatAlert).toMatchObject({ teamId: res1.team.id, teamName: "Team 1", method: "print-screen" });
+    expect(socketTeam1.handlers["turn:select-next"]).toBeUndefined();
   });
 });

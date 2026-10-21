@@ -31,6 +31,7 @@ const makeInitialState = () => ({
   phase: PHASES.LOBBY,
   phaseBeforePause: null,
   pausedRemainingMs: null,
+  antiCheatAlert: null,
   teams: [],
   currentTeamId: null,
   currentQuestionId: null,
@@ -56,6 +57,7 @@ export class GameService extends EventEmitter {
     this.config = config;
     const persistedState = initialState ? null : persistence?.load();
     this.state = initialState || persistedState || makeInitialState();
+    this.antiCheatReportTimes = new Map();
     this.state.teams.forEach((team) => { delete team.score; });
 
     // A server restart closes every Socket.IO connection. Do not trust the
@@ -346,7 +348,7 @@ export class GameService extends EventEmitter {
     if (allPiecesOpened && !this.state.winner) {
       return this.startFinalMystery();
     }
-    this.openNextTeamSelection(fallbackReason);
+    this.advanceToRandomTeam(fallbackReason);
   }
 
   startFinalMystery() {
@@ -544,11 +546,25 @@ export class GameService extends EventEmitter {
     return { isCorrect: false };
   }
 
-  openNextTeamSelection(reason) {
-    this.state.phase = PHASES.SELECT_NEXT_TEAM;
-    this.state.deadline = null;
+  advanceToRandomTeam(reason = "automatic") {
+    const connectedTeams = this.state.teams.filter((team) => team.isConnected);
+    if (connectedTeams.length === 0) {
+      this.state.deadline = null;
+      this.commit("turn.random-unavailable", null, { reason });
+      return null;
+    }
+
+    const alternatives = connectedTeams.filter((team) => team.id !== this.state.currentTeamId);
+    const pool = alternatives.length > 0 ? alternatives : connectedTeams;
+    const nextTeam = pool[Math.floor(Math.random() * pool.length)];
+    this.state.currentTeamId = nextTeam.id;
     this.state.guessQueue = [];
-    this.commit("turn.selection-open", null, { reason });
+    this.state.lastResult = null;
+    this.state.finalGuess = false;
+    this.state.roundNumber += 1;
+    this.drawQuestionForCurrentTeam();
+    this.commit("turn.randomized", nextTeam.id, { reason, candidateCount: pool.length });
+    return nextTeam;
   }
 
   submitGuess(teamId, rawAnswer) {
@@ -614,23 +630,50 @@ export class GameService extends EventEmitter {
     if (this.state.finalGuess || allPiecesOpened) {
       return this.checkFinalMysteryOrAdvance("guess-ended");
     }
-    this.openNextTeamSelection("guess-ended");
+    this.advanceToRandomTeam("guess-ended");
   }
 
   selectNextTeam(actorTeamId, nextTeamId) {
-    if (this.state.phase !== PHASES.SELECT_NEXT_TEAM) throw new Error("Chưa đến bước chọn đội tiếp theo.");
-    this.requireCurrentTeam(actorTeamId);
-    const nextTeam = this.requireTeam(nextTeamId);
-    if (!nextTeam.isConnected) throw new Error("Không thể chọn đội đang mất kết nối.");
-    const connectedTeams = this.state.teams.filter((team) => team.isConnected);
-    if (nextTeamId === this.state.currentTeamId && connectedTeams.length > 1) throw new Error("Không thể chọn chính đội mình liên tiếp.");
-    this.state.currentTeamId = nextTeamId;
-    this.state.guessQueue = [];
-    this.state.lastResult = null;
-    this.state.finalGuess = false;
-    this.state.roundNumber += 1;
-    this.drawQuestionForCurrentTeam();
-    this.commit("turn.next", nextTeamId);
+    void actorTeamId;
+    void nextTeamId;
+    throw new Error("Hệ thống hiện tự chọn ngẫu nhiên đội tiếp theo.");
+  }
+
+  reportSuspiciousCapture(teamId, method = "unknown") {
+    const team = this.requireTeam(teamId);
+    if (!team.isConnected) throw new Error("Đội đang mất kết nối.");
+    if ([PHASES.LOBBY, PHASES.FINISHED].includes(this.state.phase)) return { paused: false };
+    if (this.state.phase === PHASES.PAUSED) return { paused: false };
+
+    const now = Date.now();
+    const lastReportAt = this.antiCheatReportTimes.get(teamId) || 0;
+    if (now - lastReportAt < 10000) return { paused: false };
+    this.antiCheatReportTimes.set(teamId, now);
+
+    const pauseSeconds = this.config.antiCheatPauseSeconds || 5;
+    this.state.phaseBeforePause = this.state.phase;
+    this.state.pausedRemainingMs = this.state.deadline ? Math.max(0, this.state.deadline - now) : null;
+    this.state.phase = PHASES.PAUSED;
+    this.state.deadline = null;
+    this.state.antiCheatAlert = {
+      teamId,
+      teamName: team.name,
+      method,
+      detectedAt: new Date(now).toISOString(),
+      resumeAt: now + pauseSeconds * 1000,
+    };
+    this.commit("anti-cheat.capture-detected", teamId, { method, pauseSeconds });
+    return { paused: true, pauseSeconds };
+  }
+
+  resumeAntiCheatPause() {
+    if (this.state.phase !== PHASES.PAUSED || !this.state.antiCheatAlert) return;
+    this.state.phase = this.state.phaseBeforePause;
+    this.state.deadline = this.state.pausedRemainingMs == null ? null : Date.now() + this.state.pausedRemainingMs;
+    this.state.phaseBeforePause = null;
+    this.state.pausedRemainingMs = null;
+    this.state.antiCheatAlert = null;
+    this.commit("anti-cheat.pause-ended");
   }
 
   pause() {
@@ -639,6 +682,7 @@ export class GameService extends EventEmitter {
     this.state.pausedRemainingMs = this.state.deadline ? Math.max(0, this.state.deadline - Date.now()) : null;
     this.state.phase = PHASES.PAUSED;
     this.state.deadline = null;
+    this.state.antiCheatAlert = null;
     this.commit("game.pause");
   }
 
@@ -648,6 +692,7 @@ export class GameService extends EventEmitter {
     this.state.deadline = this.state.pausedRemainingMs == null ? null : Date.now() + this.state.pausedRemainingMs;
     this.state.phaseBeforePause = null;
     this.state.pausedRemainingMs = null;
+    this.state.antiCheatAlert = null;
     this.commit("game.resume");
   }
 
@@ -660,6 +705,10 @@ export class GameService extends EventEmitter {
   }
 
   tick() {
+    if (this.state.phase === PHASES.PAUSED && this.state.antiCheatAlert) {
+      if (Date.now() >= this.state.antiCheatAlert.resumeAt) this.resumeAntiCheatPause();
+      return;
+    }
     if (!this.state.deadline || Date.now() < this.state.deadline) return;
     if (this.state.phase === PHASES.ANSWERING) this.resolveAnswer(null, true);
     else if (this.state.phase === PHASES.ANSWER_RESULT) this.advanceAfterAnswerResult();

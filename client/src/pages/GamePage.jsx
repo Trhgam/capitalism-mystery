@@ -4,6 +4,7 @@ import { TeamSidebar } from "../components/TeamSidebar.jsx";
 import { PuzzleBoard } from "../components/PuzzleBoard.jsx";
 import { GamePanel } from "../components/GamePanel.jsx";
 import { AdminControls } from "../components/AdminControls.jsx";
+import { AntiCheatModal } from "../components/AntiCheatModal.jsx";
 
 export function GamePage({ state, team, adminMode, connected, error, actions }) {
   const [adminSelectedTeamId, setAdminSelectedTeamId] = useState(null);
@@ -40,6 +41,8 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
       </header>
 
       {error && <div className="global-error">{error}</div>}
+
+      <AntiCheatModal alert={state.antiCheatAlert} />
 
       {/* Main 3-Column Layout */}
       <div className="game-main-layout">

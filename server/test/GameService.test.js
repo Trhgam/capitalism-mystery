@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { GameService, PHASES, normalizeGuess } from "../src/game/GameService.js";
 import { questions } from "../src/data/questions.js";
 
-const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20, finalRegistrationSeconds: 20, finalAnswerSeconds: 15, finalFeedbackSeconds: 3 };
+const config = { answerSeconds: 20, guessRegistrationSeconds: 6, guessSeconds: 10, finalGuessSeconds: 20, finalRegistrationSeconds: 20, finalAnswerSeconds: 15, finalFeedbackSeconds: 3, antiCheatPauseSeconds: 5 };
 const makeGame = () => new GameService({ config });
 
 describe("GameService", () => {
@@ -27,7 +27,7 @@ describe("GameService", () => {
     expect(game.state.teams).toHaveLength(1);
   });
 
-  it("starts with and allows selecting only connected teams", () => {
+  it("automatically randomizes only among connected teams", () => {
     const game = makeGame();
     const offline = game.joinTeam("Team 1").team;
     const first = game.joinTeam("Team 2").team;
@@ -40,11 +40,9 @@ describe("GameService", () => {
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, (source.correctAnswer + 1) % 4);
     game.advanceAfterAnswerResult();
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
-    expect(() => game.selectNextTeam(first.id, offline.id)).toThrow("mất kết nối");
-
-    game.selectNextTeam(first.id, second.id);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
     expect(game.state.currentTeamId).toBe(second.id);
+    expect(game.state.currentTeamId).not.toBe(offline.id);
   });
 
   it("allows only the active team to select and answer", () => {
@@ -137,7 +135,8 @@ describe("GameService", () => {
     const source = questions.find((item) => item.id === game.state.currentQuestionId);
     game.answer(first.id, source.correctAnswer);
     game.advanceAfterAnswerResult();
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
+    expect(game.state.currentTeamId).toBe(first.id);
   });
 
   it("preserves the remaining deadline while paused", () => {
@@ -153,7 +152,25 @@ describe("GameService", () => {
     expect(game.state.deadline).toBeGreaterThan(Date.now());
   });
 
-  it("handles saveGuess: goes to SELECT_NEXT_TEAM when queue empty, or GUESS_PHASE when others queued", () => {
+  it("temporarily pauses everyone after a suspicious capture report and resumes automatically", () => {
+    const game = makeGame();
+    const first = game.joinTeam("Team 1").team;
+    game.start();
+    const phaseBefore = game.state.phase;
+
+    const result = game.reportSuspiciousCapture(first.id, "windows-shift-s");
+    expect(result).toMatchObject({ paused: true, pauseSeconds: 5 });
+    expect(game.state.phase).toBe(PHASES.PAUSED);
+    expect(game.state.antiCheatAlert).toMatchObject({ teamName: "Team 1", method: "windows-shift-s" });
+
+    game.state.antiCheatAlert.resumeAt = Date.now() - 1;
+    game.tick();
+    expect(game.state.phase).toBe(phaseBefore);
+    expect(game.state.antiCheatAlert).toBeNull();
+    expect(game.state.deadline).toBeGreaterThan(Date.now());
+  });
+
+  it("randomizes the next connected team when a saved guess leaves the queue empty", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
@@ -163,16 +180,12 @@ describe("GameService", () => {
 
     // Active team decides to save token without anyone else in queue
     game.saveGuess(first.id);
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
-    expect(game.getTeam(first.id).guessTokens).toBe(1);
-
-    // Team one selects team two
-    game.selectNextTeam(first.id, second.id);
     expect(game.state.phase).toBe(PHASES.ANSWERING);
+    expect(game.getTeam(first.id).guessTokens).toBe(1);
     expect(game.state.currentTeamId).toBe(second.id);
   });
 
-  it("disallows non-current team or admin from selecting next team", () => {
+  it("does not allow a client to manually select the next team", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
@@ -181,7 +194,7 @@ describe("GameService", () => {
     game.answer(first.id, source.correctAnswer);
     game.saveGuess(first.id);
 
-    expect(() => game.selectNextTeam(second.id, first.id)).toThrow("chưa đến lượt");
+    expect(() => game.selectNextTeam(second.id, first.id)).toThrow("tự chọn ngẫu nhiên");
   });
 
   it("disallows saveGuess when question was answered incorrectly", () => {
@@ -220,9 +233,9 @@ describe("GameService", () => {
     const result2 = game.submitGuess(second.id, "John Locke");
     expect(result2.isCorrect).toBe(false);
     expect(game.state.phase).toBe(PHASES.GUESS_PHASE);
-    // After feedback window expires -> transitions to SELECT_NEXT_TEAM!
+    // After feedback window expires -> a connected team is randomized immediately.
     game.endGuessPhase();
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
   });
 
   it("allows guessing after a wrong answer when the active team has reserve tokens", () => {
@@ -283,12 +296,12 @@ describe("GameService", () => {
     expect(game.state.guessQueue).toHaveLength(1);
     game.cancelGuess(first.id);
 
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
     expect(game.state.guessQueue).toHaveLength(0);
     expect(game.getTeam(first.id).guessTokens).toBe(1);
   });
 
-  it("shows wrong-answer feedback before opening SELECT_NEXT_TEAM", () => {
+  it("shows wrong-answer feedback before randomizing the next team", () => {
     const game = makeGame();
     const first = game.joinTeam("Team 1").team;
     const second = game.joinTeam("Team 2").team;
@@ -300,7 +313,8 @@ describe("GameService", () => {
     expect(game.state.phase).toBe(PHASES.ANSWER_RESULT);
     expect(game.state.lastResult.isCorrect).toBe(false);
     game.advanceAfterAnswerResult();
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
+    expect(game.state.phase).toBe(PHASES.ANSWERING);
+    expect(game.state.currentTeamId).toBe(second.id);
   });
 
   it("triggers FINAL_MYSTERY when 12 pieces completed and grants free token if all teams have 0 tokens", () => {
@@ -449,10 +463,6 @@ describe("GameService", () => {
     game.answer(first.id, q.correctAnswer);
     expect(game.getTeam(first.id).guessTokens).toBe(1);
     game.saveGuess(first.id);
-    expect(game.state.phase).toBe(PHASES.SELECT_NEXT_TEAM);
-
-    // First selects second team
-    game.selectNextTeam(first.id, second.id);
     expect(game.state.phase).toBe(PHASES.ANSWERING);
     expect(game.state.currentTeamId).toBe(second.id);
 
