@@ -60,7 +60,6 @@ export function LobbyPage({
               <li><b>Dự đoán nhân vật:</b> Sau khi trả lời đúng, đội có thể dùng lượt ngay hoặc lưu lại. Các đội đăng ký sẽ vào hàng đợi.</li>
               <li><b>Chuyển lượt:</b> Sau mỗi lượt, hệ thống tự chọn ngẫu nhiên một đội đang kết nối; nếu có nhiều đội, đội vừa chơi sẽ không được chọn liên tiếp.</li>
               <li><b>Final Mystery:</b> Đội có lượt dự đoán phải đăng ký. Nếu tất cả đã hết lượt, mỗi đội đang chơi được cấp 1 lượt miễn phí.</li>
-              <li><b>Chơi công bằng:</b> Thao tác chụp hoặc kéo vùng chụp màn hình có thể khiến trận đấu tạm dừng và hiện cảnh báo vui cho cả phòng.</li>
             </ol>
             <div className="rules-modal-tip">Không xếp hạng bằng điểm — đội dự đoán đúng nhà kinh tế học bí ẩn đầu tiên sẽ chiến thắng.</div>
             <button type="button" className="rules-understood-button" onClick={() => setShowRules(false)}>Đã hiểu, bắt đầu thôi</button>
