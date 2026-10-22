@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Brand } from "../components/Brand.jsx";
+import { JoinQrButton } from "../components/JoinQrButton.jsx";
 
 export function LobbyPage({
   state,
@@ -31,15 +32,18 @@ export function LobbyPage({
     <main className="figma-lobby">
       <header className="figma-header">
         <Brand />
-        <button
-          type="button"
-          className="rules-help-button"
-          aria-label="Xem thể lệ trò chơi"
-          title="Xem thể lệ trò chơi"
-          onClick={() => setShowRules(true)}
-        >
-          ?
-        </button>
+        <div className="figma-header-actions">
+          {adminMode && <JoinQrButton />}
+          <button
+            type="button"
+            className="rules-help-button"
+            aria-label="Xem thể lệ trò chơi"
+            title="Xem thể lệ trò chơi"
+            onClick={() => setShowRules(true)}
+          >
+            ?
+          </button>
+        </div>
       </header>
 
       {showRules && (

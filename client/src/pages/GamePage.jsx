@@ -5,6 +5,7 @@ import { PuzzleBoard } from "../components/PuzzleBoard.jsx";
 import { GamePanel } from "../components/GamePanel.jsx";
 import { AdminControls } from "../components/AdminControls.jsx";
 import { AntiCheatModal } from "../components/AntiCheatModal.jsx";
+import { JoinQrButton } from "../components/JoinQrButton.jsx";
 
 export function GamePage({ state, team, adminMode, connected, error, actions }) {
   const [adminSelectedTeamId, setAdminSelectedTeamId] = useState(null);
@@ -29,14 +30,17 @@ export function GamePage({ state, team, adminMode, connected, error, actions }) 
       {/* Top Header matching Figma & user screenshot */}
       <header className="game-top-header">
         <Brand />
-        <div className={`figma-token-card ${isFinalMystery ? "final-token-pulse" : ""}`}>
-          <span className="figma-token-icon">
-            <img src="/figma/guess-token.svg" alt="" />
-          </span>
-          <span>
-            <small>{adminMode ? "CHẾ ĐỘ QUẢN TRÒ" : "LƯỢT DỰ ĐOÁN"}</small>
-            <strong>{adminMode ? "HOST" : (state.teams.find((t) => t.id === liveTeam?.id)?.guessTokens ?? liveTeam?.guessTokens ?? 0)}</strong>
-          </span>
+        <div className="game-header-actions">
+          {adminMode && <JoinQrButton />}
+          <div className={`figma-token-card ${isFinalMystery ? "final-token-pulse" : ""}`}>
+            <span className="figma-token-icon">
+              <img src="/figma/guess-token.svg" alt="" />
+            </span>
+            <span>
+              <small>{adminMode ? "CHẾ ĐỘ QUẢN TRÒ" : "LƯỢT DỰ ĐOÁN"}</small>
+              <strong>{adminMode ? "HOST" : (state.teams.find((t) => t.id === liveTeam?.id)?.guessTokens ?? liveTeam?.guessTokens ?? 0)}</strong>
+            </span>
+          </div>
         </div>
       </header>
 
